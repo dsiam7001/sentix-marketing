@@ -14,16 +14,504 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_calibration: {
+        Row: {
+          actual_views: number | null
+          created_at: string
+          delta_notes: string | null
+          id: string
+          predicted_score: number | null
+          user_id: string
+          video_id: string | null
+        }
+        Insert: {
+          actual_views?: number | null
+          created_at?: string
+          delta_notes?: string | null
+          id?: string
+          predicted_score?: number | null
+          user_id: string
+          video_id?: string | null
+        }
+        Update: {
+          actual_views?: number | null
+          created_at?: string
+          delta_notes?: string | null
+          id?: string
+          predicted_score?: number | null
+          user_id?: string
+          video_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_calibration_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos_published"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitor_channels: {
+        Row: {
+          channel_name: string
+          channel_url: string
+          created_at: string
+          id: string
+          last_checked: string | null
+          last_digest: Json | null
+          platform: string
+          user_id: string
+        }
+        Insert: {
+          channel_name: string
+          channel_url: string
+          created_at?: string
+          id?: string
+          last_checked?: string | null
+          last_digest?: Json | null
+          platform?: string
+          user_id: string
+        }
+        Update: {
+          channel_name?: string
+          channel_url?: string
+          created_at?: string
+          id?: string
+          last_checked?: string | null
+          last_digest?: Json | null
+          platform?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      content_ideas: {
+        Row: {
+          created_at: string
+          for_date: string
+          id: string
+          pain_point: string | null
+          rationale: string | null
+          selected_variant_index: number | null
+          status: string
+          theme: string | null
+          time_slot: string | null
+          topic: string
+          user_id: string
+          variants: Json
+          virality_breakdown: Json | null
+          virality_score: number | null
+        }
+        Insert: {
+          created_at?: string
+          for_date?: string
+          id?: string
+          pain_point?: string | null
+          rationale?: string | null
+          selected_variant_index?: number | null
+          status?: string
+          theme?: string | null
+          time_slot?: string | null
+          topic: string
+          user_id: string
+          variants?: Json
+          virality_breakdown?: Json | null
+          virality_score?: number | null
+        }
+        Update: {
+          created_at?: string
+          for_date?: string
+          id?: string
+          pain_point?: string | null
+          rationale?: string | null
+          selected_variant_index?: number | null
+          status?: string
+          theme?: string | null
+          time_slot?: string | null
+          topic?: string
+          user_id?: string
+          variants?: Json
+          virality_breakdown?: Json | null
+          virality_score?: number | null
+        }
+        Relationships: []
+      }
+      daily_pulse: {
+        Row: {
+          ai_strategy: string | null
+          auto_trends: Json | null
+          competitor_viral: string | null
+          created_at: string
+          id: string
+          market_event: string | null
+          pulse_date: string
+          telegram_trends: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_strategy?: string | null
+          auto_trends?: Json | null
+          competitor_viral?: string | null
+          created_at?: string
+          id?: string
+          market_event?: string | null
+          pulse_date?: string
+          telegram_trends?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_strategy?: string | null
+          auto_trends?: Json | null
+          competitor_viral?: string | null
+          created_at?: string
+          id?: string
+          market_event?: string | null
+          pulse_date?: string
+          telegram_trends?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      gemini_keys: {
+        Row: {
+          active: boolean
+          cooldown_until: string | null
+          created_at: string
+          failure_count: number
+          id: string
+          key_value: string
+          label: string
+          last_used: string | null
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          cooldown_until?: string | null
+          created_at?: string
+          failure_count?: number
+          id?: string
+          key_value: string
+          label: string
+          last_used?: string | null
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          cooldown_until?: string | null
+          created_at?: string
+          failure_count?: number
+          id?: string
+          key_value?: string
+          label?: string
+          last_used?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      hooks_library: {
+        Row: {
+          category: string | null
+          created_at: string
+          emotion: string | null
+          favorite: boolean
+          hook_text: string
+          id: string
+          is_seed: boolean
+          user_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          emotion?: string | null
+          favorite?: boolean
+          hook_text: string
+          id?: string
+          is_seed?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          emotion?: string | null
+          favorite?: boolean
+          hook_text?: string
+          id?: string
+          is_seed?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      scripts: {
+        Row: {
+          caption: string | null
+          created_at: string
+          duration_sec: number | null
+          effects: Json | null
+          full_script: string
+          hashtags: string | null
+          hook: string | null
+          id: string
+          idea_id: string | null
+          music_mood: string | null
+          on_screen_text: Json | null
+          polished: boolean
+          scenes: Json
+          srt: string | null
+          status: string
+          thumbnail_concept: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          virality_breakdown: Json | null
+          virality_score: number | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          duration_sec?: number | null
+          effects?: Json | null
+          full_script: string
+          hashtags?: string | null
+          hook?: string | null
+          id?: string
+          idea_id?: string | null
+          music_mood?: string | null
+          on_screen_text?: Json | null
+          polished?: boolean
+          scenes?: Json
+          srt?: string | null
+          status?: string
+          thumbnail_concept?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          virality_breakdown?: Json | null
+          virality_score?: number | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          duration_sec?: number | null
+          effects?: Json | null
+          full_script?: string
+          hashtags?: string | null
+          hook?: string | null
+          id?: string
+          idea_id?: string | null
+          music_mood?: string | null
+          on_screen_text?: Json | null
+          polished?: boolean
+          scenes?: Json
+          srt?: string | null
+          status?: string
+          thumbnail_concept?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          virality_breakdown?: Json | null
+          virality_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scripts_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "content_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sentix_features: {
+        Row: {
+          created_at: string
+          description: string | null
+          feature_name: string
+          id: string
+          last_promoted_at: string | null
+          promote_priority: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          feature_name: string
+          id?: string
+          last_promoted_at?: string | null
+          promote_priority?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          feature_name?: string
+          id?: string
+          last_promoted_at?: string | null
+          promote_priority?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      style_memory: {
+        Row: {
+          created_at: string
+          id: string
+          label: string | null
+          sample_text: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          sample_text: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          sample_text?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      videos_published: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          platform: string
+          published_at: string
+          script_id: string | null
+          user_id: string
+          video_url: string | null
+          views_24h: number | null
+          views_48h: number | null
+          views_72h: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          platform: string
+          published_at?: string
+          script_id?: string | null
+          user_id: string
+          video_url?: string | null
+          views_24h?: number | null
+          views_48h?: number | null
+          views_72h?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          platform?: string
+          published_at?: string
+          script_id?: string | null
+          user_id?: string
+          video_url?: string | null
+          views_24h?: number | null
+          views_48h?: number | null
+          views_72h?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "videos_published_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "scripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_calendar: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          description: string | null
+          id: string
+          slot_type: string
+          theme: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          description?: string | null
+          id?: string
+          slot_type?: string
+          theme: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          description?: string | null
+          id?: string
+          slot_type?: string
+          theme?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +638,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
