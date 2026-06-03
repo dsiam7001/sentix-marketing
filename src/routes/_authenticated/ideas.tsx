@@ -93,7 +93,7 @@ function IdeasPage() {
       {!pulse && (
         <Card className="border-warning/30 bg-warning/5">
           <CardContent className="pt-4 text-sm">
-            টিপ: আগে <Link to="/" className="text-primary underline">Daily Pulse</Link> input দিন — তাহলে AI আজকের context-ভিত্তিক ideas দিবে।
+            টিপ: আগে <Link to="/dashboard" className="text-primary underline">Daily Pulse</Link> input দিন — তাহলে AI আজকের context-ভিত্তিক ideas দিবে।
           </CardContent>
         </Card>
       )}
