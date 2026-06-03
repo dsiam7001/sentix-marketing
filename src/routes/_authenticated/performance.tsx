@@ -61,8 +61,9 @@ function PerformancePage() {
   });
 
   const updateViews = useMutation({
-    mutationFn: async ({ id, field, value }: any) => {
-      await supabase.from("videos_published").update({ [field]: value }).eq("id", id);
+    mutationFn: async ({ id, field, value }: { id: string; field: string; value: number }) => {
+      const patch: Record<string, number> = { [field]: value };
+      await supabase.from("videos_published").update(patch as any).eq("id", id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["videos"] }),
   });
@@ -118,9 +119,9 @@ function PerformancePage() {
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <ViewsInput label="24h" value={v.views_24h} onSave={(val) => updateViews.mutate({ id: v.id, field: "views_24h", value: val })} />
-                <ViewsInput label="48h" value={v.views_48h} onSave={(val) => updateViews.mutate({ id: v.id, field: "views_48h", value: val })} />
-                <ViewsInput label="72h" value={v.views_72h} onSave={(val) => updateViews.mutate({ id: v.id, field: "views_72h", value: val })} />
+                <ViewsInput label="24h" value={v.views_24h} onSave={(val: number) => updateViews.mutate({ id: v.id, field: "views_24h", value: val })} />
+                <ViewsInput label="48h" value={v.views_48h} onSave={(val: number) => updateViews.mutate({ id: v.id, field: "views_48h", value: val })} />
+                <ViewsInput label="72h" value={v.views_72h} onSave={(val: number) => updateViews.mutate({ id: v.id, field: "views_72h", value: val })} />
               </div>
             </CardContent>
           </Card>
