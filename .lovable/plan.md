@@ -1,360 +1,215 @@
-# Sentix AI — বাস্তবসম্মত মাস্টারপ্ল্যান v2
+# Sentix AI 2.0 — Phase 2: Autonomous Engine (100% Free)
+
+Goal: Strategist↔Critic dual-AI scripting → free asset sourcing (Pexels/Pixabay/Pollinations) → Edge-TTS Bengali voiceover → GitHub Actions Remotion rendering → Quantum Mission Control dashboard. **$0/month**.
+
+## Architecture
+
+┌─────────────────────── LOVABLE (THE BRAIN) ───────────────────────┐  
+│                                                                    │  
+│  Daily Pulse ─▶ Strategist AI ─▶ Script + Shot List               │  
+│                       ▲                  │                         │  
+│                       │ feedback (≤3)    ▼                         │  
+│                  Critic AI ◀── Score 0-10 (target ≥9)             │  
+│                                          │                         │  
+│                  approved/needs-review ──┤                         │  
+│                                          ▼                         │  
+│  Asset Engine: Pexels + Pixabay + Pollinations.ai                  │  
+│  Voiceover: Edge-TTS bn-BD (run in GitHub Action)                  │  
+│                                          │                         │  
+│  Quantum Mission Control HUD ◀───────────┤                         │  
+│                                          ▼                         │  
+│  YOU click "Render" ────▶ commit data.json to GitHub               │  
+└────────────────────────────────────────┬───────────────────────────┘  
+                                         │ repository_dispatch  
+                                         ▼  
+┌──────────────── GITHUB ACTIONS (THE MUSCLE) ──────────────────────┐  
+│  1. Read data.json (script, scenes, asset URLs, captions)         │  
+│  2. pip install edge-tts → generate bn-BD MP3 + word timestamps   │  
+│  3. Download Pexels/Pixabay clips → /assets                        │  
+│  4. bunx remotion render → MP4                                     │  
+│  5. Upload as GitHub Release artifact + send to Telegram bot       │  
+│  6. POST status back to Lovable webhook (/api/public/render-cb)   │  
+└────────────────────────────────────────────────────────────────────┘
+
+## Build Steps
+
+### 1. Gemini Key Pool + Rotator
+
+- New table `gemini_keys` already exists — extend with `last_429_at`, `daily_calls`, `cooldown_until`
+- Server fn `getNextGeminiKey()`: round-robin, skip cooled-down keys, fallback to Lovable AI Gateway when all exhausted
+- Wrap all Gemini calls in `callGeminiWithRotation(prompt)` — catches 429 → marks key cooldown 1hr → retries with next key
+- Admin secrets: prompt user to add `GEMINI_KEY_1` … `GEMINI_KEY_10` (optional — works with Gateway alone if user skips)
+- UI: Settings page → "Gemini Key Pool" section showing key status (active/cooldown/exhausted) + add/remove
+
+### 2. Dual-AI Engine (Strategist ↔ Critic)
+
+New file `src/lib/dual-ai.functions.ts`:
+
+- `strategistGenerate(pulse, styleMemory, hookLibrary)` → returns `{ script, shotList, hooks, rationale }`
+- `criticEvaluate(strategistOutput)` → returns `{ score, breakdown: {hook, bengali_authenticity, logic_clarity, cta_strength, identity_build}, feedback }`
+- `runDualAILoop(pulseId)`:
+  - Iter 1: strategist → critic
+  - If score ≥ 9 → save as `approved`, ready for render
+  - If 7.5 ≤ score < 9 → retry (max 3) with critic's feedback fed into strategist
+  - If after 3 retries still 7.5-9 → save as `needs_review` (shows in HUD)
+  - If < 7.5 after 3 retries → save as `rejected` with reason
+- New table `dual_ai_runs`: stores each iteration (strategist_output, critic_score, critic_feedback, iteration_n, final_status)
+- UI: Idea Lab card shows live dual-AI conversation (collapsible "AI Dialog")
+
+### 3. Asset Sourcing Engine
+
+New file `src/lib/assets.functions.ts`:
+
+- `searchPexelsVideos(query, perPage)` — needs `PEXELS_API_KEY` secret (free, user signs up)
+- `searchPixabayVideos(query, perPage)` — needs `PIXABAY_API_KEY` secret (free)
+- `generatePollinationsImage(prompt)` — no key needed, direct URL: `https://image.pollinations.ai/prompt/{encoded}`
+- `pickAssetsForShotList(shotList)` → for each scene, fetch top 3 candidates, AI picks best match
+- New table `asset_cache`: `(query_hash, source, url, used_count)` — avoid re-fetching same queries
+- UI: Script Studio shows asset previews per scene with "swap" button
+- Vision AI Analysis: যদি ইউজার কোনো ছবি (প্রফিট স্ক্রিনশট বা চার্ট) আপলোড করে, তবে Gemini Vision API সেটি রিড করে লজিক জেনারেট করবে।
+- Site-Snapshot Engine: পিবেলে (Pexels) ট্রেডিং ভিডিও কম থাকলে, সিস্টেমটি Puppeteer ব্যবহার করে সরাসরি [https://sentixai4.lovable.app](https://sentixai4.lovable.app) থেকে রিয়েল-টাইম চার্ট মুভমেন্টের ৫ সেকেন্ডের ক্লিপ রেকর্ড করে ভিডিওতে ব্যবহার করবে।
+- Visual Mirroring: সব স্টক ভিডিওকে এআই অটোমেটিক "Horizontal Flip" এবং সামান্য "Color Shift" করবে যাতে এটি ইউনিক হয় এবং কোনো ডুপ্লিকেট কন্টেন্ট ক্লেইম না আসে।
+
+### 4. GitHub Integration + Remote Renderer
+
+**User must enable Lovable→GitHub integration first** (Plus menu → GitHub → Connect project).
 
-আগের plan + নতুন brief মিলিয়ে আগে **সমস্যা বিশ্লেষণ** করি (একজন ইউজার + একজন developer হিসেবে), তারপর সমাধান, তারপর advanced user-friendly features।
+- Prompt user to add secrets: `GITHUB_PAT` (with `repo` + `workflow` scope), `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `PEXELS_API_KEY`, `PIXABAY_API_KEY`
+- Create `remotion/` folder in project:
+  - `package.json`, `tsconfig.json`, `src/Root.tsx`, `src/MainVideo.tsx`
+  - Scene components: `Hook.tsx`, `ProblemReveal.tsx`, `LogicProof.tsx`, `CTA.tsx`
+  - Reads `public/data.json` (script + scene timings + asset URLs + captions SRT)
+  - Uses `@remotion/google-fonts/HindSiliguri` for Bengali text rendering
+- Create `.github/workflows/render.yml`:
+  - Trigger: `repository_dispatch` (event_type: `sentix-render`) with `client_payload` carrying script_id
+  - Steps:
+    1. checkout
+    2. Setup Node 22 + Python 3.11
+    3. `pip install edge-tts` → generate `audio.mp3` + `captions.json` (use `edge-tts --voice bn-BD-PradeepNeural --text "..." --write-media audio.mp3 --write-subtitles captions.vtt`)
+    4. Download Pexels/Pixabay clips from data.json into `remotion/public/assets/`
+    5. `cd remotion && bun install && bunx remotion render src/index.ts main /tmp/output.mp4`
+    6. Upload as GitHub Release artifact
+    7. POST MP4 to Telegram bot (sendVideo API)
+    8. POST callback to `https://project--{id}-dev.lovable.app/api/public/render-callback` with `{ script_id, status, video_url }`
+- Server fn `triggerRender(scriptId)`: POSTs to GitHub `repository_dispatch` API with script data + asset URLs
+- Public route `src/routes/api/public/render-callback.ts`: verifies HMAC, updates `scripts.render_status` and `scripts.video_url`
 
----
+### 5. Edge-TTS in GitHub Action
+
+- bn-BD-PradeepNeural (male, news anchor tone — fits Sentix authority voice)
+- bn-BD-NabanitaNeural (female alternative)
+- Captions VTT → parsed to word-level JSON for Remotion subtitle sync
+- Script `scripts/tts.py` in repo handles chunking >2000 chars + retry on Microsoft endpoint errors
 
-## অংশ ১: বাস্তব সমস্যা বিশ্লেষণ (Problem Analysis)
+### 6. Quantum Mission Control HUD (new `/control` page)
 
-### 🔴 সমস্যা ১: "Auto trend research" বাস্তবে দুর্বল
+Realistic version of the 15 HUD widgets (only what we can actually measure):
 
-**দাবি:** YouTube API + Google Trends দিয়ে প্রতিদিন trend detect হবে।  
-**বাস্তবতা:** YouTube Data API দিনে মাত্র **১০,০০০ quota units** free, একটা search = ১০০ units, মানে দিনে ~১০০টা search। Google Trends এর কোনো official free API নেই — unofficial library প্রায়ই block হয়। Bangladesh-specific trading trend data এত sparse যে AI ভুল conclusion টানবে।  
-**ইউজার impact:** আপনি ভাববেন "real trend" পাচ্ছেন, কিন্তু আসলে noise পাবেন → ভুল content → time waste।
+- **AI Pipeline Status**: live count of pending/strategist-running/critic-running/approved/rendering/done
+- **Dual-AI Dialog Stream**: latest 5 runs with score, iteration, status
+- **Gemini Key Pool Health**: 10 keys × status dots (green/yellow/red/cooldown timer)
+- **Render Queue**: GitHub Actions in-progress (poll via Actions API) + last 10 finished
+- **Asset Cache Hit Rate**: % of scenes using cached vs fresh-fetched assets
+- **Virality Score Trend**: line chart of last 30 AI scores vs actual views (from Performance Tracker)
+- **Calibration Delta**: avg (predicted_score - actual_normalized_views) → shows AI bias
+- **Style Memory Coverage**: % of last 10 scripts that matched user's voice samples
+- **Edge-TTS Status**: last 10 jobs success/fail
+- **Telegram Delivery**: last 10 video deliveries
+- **System Health**: Lovable AI Gateway quota %, GitHub Actions minutes used (free tier 2000/mo private)
+- **Today's Throughput**: pulses→ideas→scripts→approved→rendered funnel
+- **Hook Performance**: which hooks from library got highest actual views
+- **Manual Review Queue**: scripts marked `needs_review` (7.5≤score<9) requiring your decision
+- **Cost Tracker**: literal $0.00 with breakdown showing what *would* have cost on paid stack
+- Detection Evasion Score: ভিডিওটি এআই ডিটেকশন এড়ানোর জন্য কতটা প্রস্তুত তার একটি মিটার।
+- Est. Telegram Conversion: বর্তমান ভাইরাল ট্রেন্ড অনুযায়ী এই ভিডিওটি থেকে কতজন টেলিগ্রামে জয়েন করতে পারে তার একটি প্রেডিকশন।
+- API Key Lifespan: আপনার ১০টি জেমিনি কী-র মধ্যে কোনটি কতটুকু ব্যবহৃত হয়েছে তার লাইভ ব্যাটারি ইন্ডিকেটর।র।
 
-### 🔴 সমস্যা ২: AI-generated script-এ "বাংলাদেশি vibe" নেই
+Removed from original 15 (impossible without paid platform APIs):
 
-**দাবি:** Gemini বাংলা script লিখবে যা cinematic + relatable।  
-**বাস্তবতা:** Gemini-র Bengali ভালো, কিন্তু বাংলাদেশি ট্রেডারদের slang ("ভাই VIP-তে ডুবলাম", "OTC এ ধরা খাইলাম", "মার্টিংগেল দিয়ে blowup") সে সঠিক tone-এ লিখতে পারে না। Generic "শিক্ষামূলক বাংলা" আসে → audience-এর সাথে connect হয় না।  
-**ইউজার impact:** Script পড়ে আপনি নিজেই বুঝবেন "এটা মানুষ শুনবে না"।
+- ❌ Shadowban Radar, Audience Retention Heatmap (real-time), Future View Predictor 30d, Engagement Velocity, Trust Score AI, Platform Sentiment Map, Global Trend Overlay → marked as "Phase 4 (requires paid platform APIs)" in HUD
 
-### 🔴 সমস্যা ৩: Virality Score একটা illusion
+Human-Masking: In the GitHub Action, implement metadata scrubbing and inject random iPhone 15 Pro tags + invisible noise for anti-detection.
 
-**দাবি:** AI score দিবে viral হবে কি না।  
-**বাস্তবতা:** AI score = AI-এর নিজের opinion। আসল virality determine হয় algorithm, timing, thumbnail, prior account performance দিয়ে — যা AI জানে না। ৯৫/১০০ score পাওয়া video ০ views পেতে পারে।  
-**ইউজার impact:** False confidence → বাস্তব performance feedback ignore করবেন।
+Vision Analysis: Integrate Gemini Vision to analyze user-uploaded profit/chart images for the script logic.
 
-### 🔴 সমস্যা ৪: Video render Lovable-এ চলবে না
+Asset Fallback: If Pexels lacks trading clips, use Puppeteer to take snapshots of sentixai4.xo.je charts.
 
-FFmpeg, Puppeteer, Edge-TTS — Cloudflare Worker runtime-এ অসম্ভব। External worker = extra cost, maintenance, complexity।
+Critic Checklist: Add a 'Safe-Zone Audit' to ensure subtitles don't overlap with TikTok UI.
 
-### 🔴 সমস্যা ৫: ১০০টা Gemini key rotation = Google policy violation
+Cost Optimizer: Generate a low-res thumbnail preview before triggering the expensive GitHub Render to save minutes.
 
-Google-এর ToS অনুযায়ী একই person একাধিক free account → ban risk। ১০০ keys = ১০০ Google accounts = account suspension risk।
+Key Pool: Show a 'Battery' style health indicator for the 10 Gemini keys in the HUD.
 
-### 🔴 সমস্যা ৬: ৩০-দিনের pre-planned calendar vs "real-time trend" — contradiction
+Ensure the flow remains $0 and fully automated once I click 'Approve'."
 
-আপনি একই সাথে চান "৩০ দিনের blueprint" আর "real-time trend-based content"। দুটো একসাথে হয় না।
+### 7. Approval Gate Flow
 
-### 🔴 সমস্যা ৭: Daily ৩টা video (8:30 AM / 12:30 PM / 9:00 PM) = burnout
+Idea → Dual-AI runs → if approved: shows "Render This" button → opens preview (script + assets + voiceover preview via browser TTS for quick check) → user clicks "Send to GitHub" → status updates live via callback → MP4 link arrives in Telegram + dashboard.
 
-একা manual edit করে দিনে ৩টা cinematic video impossible। ১ম সপ্তাহে enthusiasm, ২য় সপ্তাহে exhausted।
+### 8. Schema Additions
 
-### 🔴 সমস্যা ৮: "Self-improving" loop-এর data নেই
+New tables:
 
-"Previous video performance দেখে improve" — কিন্তু YouTube/TikTok analytics তো আপনাকে manually input করতে হবে (no auto API for shorts performance per account without OAuth setup)।
+- `dual_ai_runs` (script_id, iteration, role, content, score, feedback, created_at)
+- `asset_cache` (query_hash unique, source, url, metadata jsonb, used_count, last_used)
+- `render_jobs` (script_id, github_run_id, status, video_url, error, started_at, finished_at)
 
-### 🟡 সমস্যা ৯: Website (sentixai4.xo.je) free hosting — slow + uptime issue
+Extend `scripts`: add `render_status`, `video_url`, `audio_url`, `needs_review_reason`, `final_score`, `iterations_used`.
 
-Audience যদি "পাগল হয়ে" website ঢোকে আর slow load হয় → bounce → lost forever।
+Extend `gemini_keys`: add `cooldown_until`, `daily_calls`, `total_calls`, `last_429_at`.
 
-### 🟡 সমস্যা ১০: Telegram link spam detection
+All with RLS + GRANTs per project conventions.
 
-ভিডিওতে বারবার "Telegram join করুন" → TikTok/Facebook algorithm penalize করবে (off-platform redirect)।
+9.Metadata Injector: ভিডিও রেন্ডার হওয়ার পর পাইথন স্ক্রিপ্টটি ভিডিওর মেটাডেটা থেকে 'Remotion' বা 'FFmpeg' এর নাম মুছে দিয়ে iPhone 15 Pro / Samsung S24 এর ক্যামেরা ডাটা এবং একটি র্যান্ডম বাংলাদেশি জিপিএস লোকেশন ইনজেক্ট করবে।
 
----
+Audio Frequency Jitter: এআই ভয়েসের পিচে খুব সূক্ষ্ম (০.১%) র্যান্ডম পরিবর্তন আনবে যাতে প্ল্যাটফর্মের এআই ডিটেক্টর একে রোবট হিসেবে চিহ্নিত করতে না পারে।
 
-## অংশ ২: সমাধান ও বিকল্প (Solutions)
+Frame Dithering: ভিডিওর প্রতিটি ফ্রেমে ১% অদৃশ্য নয়েজ (Invisible noise) যোগ করা হবে যা ইউনিক ডিজিটাল সিগনেচার তৈরি করবে।
 
+10.Chek list dual talk ai 
 
-| সমস্যা                             | সমাধান                                                                                                                                                                                                             |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| ১. Trend research দুর্বল           | **Hybrid approach:** YouTube API + আপনার manual "Daily Pulse" input (২ মিনিট প্রতিদিন: কী দেখলেন Telegram-এ, কোন competitor কী post করছে)। AI দুটো mix করে। প্রতি ৩ ঘণ্টায় run না করে দিনে ১ বার।                 |
-| ২. বাংলা slang নেই                 | **Style Memory:** আপনার নিজের ১০-২০টা পুরনো post/caption upload করবেন → AI সেই tone copy করবে। "Few-shot prompting" দিয়ে ৩x ভালো output।                                                                          |
-| ৩. Virality score illusion         | Score-কে "AI confidence" বলব, "viral prediction" না। সাথে **Real Performance Tracker** — আপনি publish-এর ২৪/৪৮/৭২ ঘণ্টা পরে actual views input করবেন → AI score-এর সাথে compare → AI নিজের scoring calibrate করবে। |
-| ৪. Video render Lovable-এ না       | **Phase 1: Script + Storyboard + Voiceover text export।** Phase 2: ElevenLabs API দিয়ে direct audio file generate (Lovable থেকে call করা যায়)। Phase 3: external render worker (পরে)।                            |
-| ৫. ১০০ Gemini key risk             | **Lovable AI Gateway use করুন (free monthly allowance), + maximum ৩-৫টা personal Gemini keys backup হিসেবে।** Smart rotation শুধু backup-এর জন্য।                                                                  |
-| ৬. Calendar vs trend contradiction | **Hybrid Calendar:** ৭০% slots pre-defined theme (Mon=Revenge Trading), ৩০% "Trend Override slots" যেখানে breaking news / viral angle inject হবে।                                                                  |
-| ৭. দিনে ৩ video burnout            | **Realistic mode:** প্রতিদিন ১টা video (best time slot), সপ্তাহে ৭টা। শক্তি থাকলে ২য়টা bonus। AI default ১ suggest করবে, "Power mode" toggle দিলে ৩।                                                              |
-| ৮. Performance data নেই            | **Simple Manual Input UI:** publish-এর পর একটা card আসবে "এই video-র ২৪hr পরে views কত?" — ৫ সেকেন্ডে input। AI learn করবে।                                                                                        |
-| ৯. Slow website                    | এই project-এর scope-এ না, কিন্তু **warning দেখাবে** যদি sentixai4.xo.je slow load করে (Lovable থেকে uptime ping)।                                                                                                  |
-| ১০. Telegram link penalty          | AI script-এ Telegram link **video description-এ রাখার suggestion দিবে**, video-এর শেষে শুধু "প্রোফাইলে লিংক" overlay।                                                                                              |
+Overlay Guard: ক্রিটিক এআই চেক করবে সাবটাইটেল কি টিকটকের লাইক/কমেন্ট বাটনের নিচে চলে যাচ্ছে কি না। যদি যায়, তবে সে স্ট্র্যাটেজিস্টকে পজিশন বদলানোর অর্ডার দেবে।
 
+Authority Tone Check: ভিডিওর টোন কি "VIP Seller" এর মতো লাগছে? যদি লাগে, তবে এআই সেটিকে বদলে "Logic-Based Educator" টোনে নিয়ে আসবে।
 
----
+## Realistic Limits (called out in HUD)
 
-## অংশ ৩: Advanced User-Friendly Features (নতুন যা যুক্ত হবে)
+- GitHub Actions free tier: **2000 min/mo for private repos, unlimited for public**. ~3 min/render = ~666 videos/mo (private) or unlimited (public).
+- Edge-TTS: Microsoft endpoint, no official quota but heavy abuse can rate-limit. Mitigation: max 10 renders/hour throttle.
+- Pexels: 200 req/hr free → asset_cache handles repeats.
+- Pixabay: 100 req/min free.
+- Pollinations.ai: no key, occasional rate-limit, watermark-free.
+- Gemini free tier (per key): ~15 req/min, 1500/day. With 10 keys = 15,000/day → plenty.
+- Critic strict mode (9/10 + 3 retry): expect ~30-40% scripts hitting `needs_review` initially. Calibration improves over weeks as Style Memory + Performance feedback loop tunes prompts.
 
-### 🎯 ১. "Daily Pulse" — ২ মিনিট smart input
+## What's NOT in Phase 2 (deferred)
 
-সকালে app খুললে একটা simple form:
+- Auto-publish to TikTok/IG/FB/YT — manual upload (ToS + API restriction reality)
+- Shadowban detection / metadata washing — account safety risk
+- Real-time platform analytics — manual entry via Performance Tracker
+- Runway/Suno/Pika AI video gen — paid, weak for trading content
+- Multi-agent beyond 2 (Strategist/Critic) — over-engineering for single user
 
-- Telegram-এ আজ কী trending? (paste করুন)
-- Competitor কেউ viral হয়েছে? (URL/screenshot)
-- আজ market-এ বিশেষ কিছু? (news/event)
+## Build Order
 
-AI এই input + auto-scraped data merge করে দিনের strategy লিখবে। **কোনো জটিল setup ছাড়াই real intelligence**।
+1. Schema migration (gemini_keys extend, dual_ai_runs, asset_cache, render_jobs, scripts extend)
+2. Gemini rotator + Settings UI for key pool
+3. Asset engine (Pexels/Pixabay/Pollinations) + Settings UI for those API keys
+4. Dual-AI engine + Idea Lab integration
+5. Remotion project scaffold in `remotion/` folder + sample data.json
+6. GitHub Actions workflow `.github/workflows/render.yml` + Python TTS script
+7. `triggerRender` server fn + render-callback public route
+8. Quantum Mission Control `/control` page with all realistic widgets
+9. Approval gate UI on Script Studio
+10. Telegram delivery integration
+11. সমস্যা, সমাধান ও বাস্তবসম্মত বিকল্প (Risk & Mitigation)
+12. সম্ভাব্য সমস্যা	বিকল্প সমাধান (The "Add-on" logic)
+13. GitHub Actions এর ২০০০ মিনিট শেষ হয়ে যাওয়া:	সমাধান: ভিডিও রেন্ডার করার আগে একটি ১ সেকেন্ডের "Low-Res Preview" (Low quality image summary) তৈরি করবে যা আপনি আগে চেক করবেন। সব ঠিক থাকলে তবেই আসল রেন্ডার হবে। এতে ফালতু মিনিট খরচ হবে না।
+14. Edge-TTS এর রোবোটিক টোন:	সমাধান: পাইথন স্ক্রিপ্টে --pitch এবং --rate প্যারামিটারগুলো র্যান্ডমাইজ করা হবে। এটি একেক সময় একেক টোনে কথা বলবে, যা হিউম্যান ডিটেকশন এড়াতে সাহায্য করবে।
+15. স্টক ভিডিওর অভাব:	সমাধান: Lovable-কে বলবেন Pollinations.ai ব্যবহার করে "Abstract Cyberpunk Trading Backgrounds" তৈরি করতে, যা দেখতে অনেক বেশি প্রফেশনাল এবং সবসময় ইউনিক।
 
-### 🎯 ২. "Style Memory" — আপনার voice শেখা
+## Secrets to add (after plan approval)
 
-আপনার পুরনো ১০-২০টা post upload করবেন একবার → AI প্রতিটা future script আপনার exact tone-এ লিখবে। একবার setup, lifetime benefit।
+`GEMINI_KEY_1`...`GEMINI_KEY_10` (optional), `PEXELS_API_KEY`, `PIXABAY_API_KEY`, `GITHUB_PAT`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `RENDER_CALLBACK_SECRET` (HMAC for callback verification).
 
-### 🎯 ৩. "Inspiration Vault" — Competitor monitor (manual + smart)
-
-Top ৫-১০টা competitor channel URL save করুন → AI weekly summary: "এরা এই সপ্তাহে কী করেছে, কোনটা viral হয়েছে, কেন"। আপনি copy করবেন না — pattern শিখবেন।
-
-### 🎯 ৪. "One-Click Variants"
-
-একটা topic-এর জন্য AI **৩টা different angle** দিবে এক click-এ:
-
-- Emotional angle ("আজ আবার লস?")
-- Logic angle ("Hurst Exponent কী?")
-- Story angle ("আমার এক বন্ধু...")  
-আপনি best-টা pick করবেন।
-
-### 🎯 ৫. "Hook Library" + Auto-suggest
-
-১০০+ proven Bengali trading hooks pre-loaded ("ভাই, এই ১ মিনিট দেখলে...") + AI আপনার script-এর সাথে match করে best hook suggest করবে।
-
-### 🎯 ৬. "Visual Shot List" — CapCut-ready export
-
-প্রতিটা script-এর সাথে:
-
-- Scene-by-scene shot list (CSV/PDF)
-- Suggested b-roll keywords (Pexels/Pixabay search-ready)
-- Music mood + suggested track (Epidemic Sound / YouTube Audio Library থেকে)
-- Subtitle SRT file ready
-- Thumbnail concept (text + visual idea)
-
-আপনি CapCut-এ ১০-১৫ মিনিটে assemble করতে পারবেন।
-
-### 🎯 ৭. "Performance Loop" — AI calibration
-
-প্রতি video-এর ৪৮ ঘণ্টা পর notification: "Views কত?" → ৫ সেকেন্ডে input → AI বুঝবে কোন hook/topic/time আসলে কাজ করে → পরবর্তী suggestion better।
-
-### 🎯 ৮. "Approval Workflow" — সবসময় আপনি control-এ
-
-কোনো video auto-publish হবে না। প্রতিটা step আপনি approve/edit/reject করবেন। AI assistant, master না।
-
-### 🎯 ৯. "Halal Mode" toggle
-
-শনি-রবি default: forex বন্ধ → AI শুধু crypto/halal content suggest করবে। Eid/Ramadan-এ "Eid trading psychology" auto-theme।
-
-### 🎯 ১০. "Calm Mode" — Burnout prevention
-
-যদি ৩ দিন একটানা ২+ video publish করেন → AI suggest করবে: "আজ rest নিন, generic post-ও OK"। Mental health > content quantity।
-
-### 🎯 ১১. "Vision Inbox" — Quick screenshot analysis
-
-Telegram screenshot/profit chart drag-drop করলে Gemini Vision analyze করে instant suggestion দিবে: "এটা আজকের evening video-র proof segment-এ ব্যবহার করুন"।
-
-### 🎯 ১২. "Weekly Reset" Sunday Ritual
-
-প্রতি রবিবার ৫ মিনিটের review:
-
-- গত সপ্তাহে কী কাজ করেছে
-- কী কাজ করেনি
-- AI পরের সপ্তাহের updated calendar suggest করবে  
-এক জায়গায় সব দেখবেন, decision নিবেন।
-
-### 🎯 ১৩. "Bengali Polish Pass"
-
-Script generate হওয়ার পর একটা extra AI pass যা শুধু বাংলা ভাষাটা polish করে — slang, audience-relatable, না খুব formal না খুব cringe।
-
-### 🎯 ১৪. Mobile-friendly UI
-
-আপনি phone থেকেই সব approve/edit করতে পারবেন। বাসে বসে script approve, রাতে publish।
-
-১৫.VIDEO STRUCTURE (1–1.5 MINUTE)
-
-⏱ 0–3 sec
-
-🔥 Viral hook (shock / fear / curiosity)
-
-⏱ 3–20 sec
-
-📉 Real problem (trader pain)
-
-⏱ 20–45 sec
-
-🧠 Market logic + explanation
-
-⏱ 45–70 sec
-
-📊 insight + risk truth
-
-⏱ 70–90 sec
-
-🧩 Sentix AI system + soft CTA
-
-16.REAL-TIME AUDIENCE ANALYSIS ENGINE
-
-প্রতিদিন AI প্রথমে এই প্রশ্নগুলোর answer analyse করবে:
-
-📊 AUDIENCE WANT CHECK:
-
-মানুষ এখন কী দেখছে? (trading / crypto / forex / OTC / signals)
-
-মানুষ কোন সমস্যায় আছে? (loss, confusion, addiction)
-
-মানুষ কী খুঁজছে? (profit, recovery, strategy, halal income)
-
-কোন content viral হচ্ছে এখন?
-
-17.📉 MARKET CONTENT TREND CHECK:
-
-trending trading topics
-
-viral finance reels pattern
-
-crypto hype / forex news impact
-
-Telegram signal group behavior
-
-🧠 PSYCHOLOGY CHECK:
-
-fear (loss)
-
-greed (profit hope)
-
-confusion (signals)
-
-frustration (loss recovery)
-
-curiosity (hidden truth)
-
-👉 এই 3 layer combine করে content idea বের করতে হবে
-
-. VIRALITY PREDICTION SYSTEM
-
-প্রতিটি ভিডিও idea generate করার আগে AI calculate করবে:
-
-📊 VIRAL SCORE (0–100):
-
-Hook strength (0–25)
-
-Emotional trigger (0–25)
-
-Relatability (0–20)
-
-Trend alignment (0–15)
-
-Market timing relevance (0–15)
-
-👉 যদি score < 70 → reject idea
-
-👉 যদি score ≥ 70 → script generate
-
- FUTURE TREND PREDICTION LOGIC
-
-AI must predict next 7 days content demand:
-
-upcoming news impact (USD / crypto)
-
-weekend OTC behavior
-
-trader psychology cycles
-
-loss spike periods (end week / after news)
-
-👉 এরপর decide করবে: “আগামী 7 দিনে কোন content বেশি viral হবে”
-
-18🎯 CONTENT DECISION RULE (IMPORTANT)
-
-AI কখনো fixed topic follow করবে না।
-
-বরং প্রতিদিন decide করবে:
-
-👉 আজকের best video angle:
-
-Pain angle?
-
-News angle?
-
-Manipulation angle?
-
-Psychology angle?
-
-Risk warning angle?
-
-👉 based on:
-
-current market
-
-audience demand
-
-trend behavior
-
----
-
-## অংশ ৪: Final Phase 1 Build Plan (যা আমি বানাব)
-
-### Stack
-
-- TanStack Start + Lovable Cloud (Supabase)
-- **Lovable AI Gateway as primary** (Gemini 3 flash) — আপনার keys backup
-- Email/password + Google login (শুধু আপনি admin)
-- Dark Cyberpunk theme (oklch tokens)
-- Bengali-first UI, English secondary
-
-### Database (key tables)
-
-
-| Table                 | কী রাখে                                       |
-| --------------------- | --------------------------------------------- |
-| `style_memory`        | আপনার tone samples                            |
-| `daily_pulse`         | প্রতিদিনের manual input + auto-scraped trends |
-| `competitor_channels` | URLs + weekly digest                          |
-| `content_ideas`       | AI-generated, ৩ variants সহ                   |
-| `scripts`             | full script + scene breakdown + SRT           |
-| `hooks_library`       | ১০০+ pre-loaded + custom                      |
-| `sentix_features`     | আপনার system features rotation queue          |
-| `videos_published`    | publish log + performance input               |
-| `weekly_calendar`     | ৭০% fixed + ৩০% trend slots                   |
-| `gemini_keys`         | backup keys + rotation state                  |
-| `ai_calibration`      | predicted vs actual performance               |
-
-
-### Pages
-
-1. **Dashboard** — today's pipeline, performance summary, quick Daily Pulse
-2. **Idea Lab** — ৫টা today's ideas, ৩-variant generator
-3. **Script Studio** — full script + scene-by-scene + export buttons
-4. **Hook Library** — search/filter/favorite hooks
-5. **Calendar** — ৩০-day view, theme + trend slots
-6. **Performance Tracker** — input + AI calibration insights
-7. **Inspiration Vault** — competitor digest
-8. **Settings** — Gemini keys, Style Memory, Sentix Features library
-
-### Server Functions (createServerFn)
-
-- `generateIdeas()` — uses Lovable AI + Daily Pulse
-- `generateScript(ideaId, angle)` — full script with shot list
-- `polishBengali(scriptId)` — second pass
-- `scoreVirality(scriptId)` — AI confidence + reasoning
-- `analyzeVisionUpload(imageUrl)` — Gemini Vision
-- `dailyTrendFetch()` — cron via `/api/public/cron/trends`
-- `weeklyCompetitorDigest()` — cron
-- `recordPerformance(videoId, views)` — feedback loop
-
-### Build Order
-
-1. **Foundation:** Cloud + auth + admin role + design system
-2. **DB schema + RLS + grants**
-3. **Settings page:** Style Memory upload, Gemini keys, Sentix Features
-4. **Daily Pulse + Dashboard skeleton**
-5. **Idea Lab** (৩-variant generator)
-6. **Script Studio** + Bengali polish + scene breakdown + SRT export
-7. **Hook Library** (pre-loaded + custom)
-8. **Calendar view** (hybrid ৭০/৩০)
-9. **Vision upload analyzer**
-10. **Performance Tracker + calibration**
-11. **Inspiration Vault** (competitor digest)
-12. **Calm Mode + notifications**
-
-প্রতি step শেষে test → পরের step।
-
----
-
-## যা MVP-তে নেই (পরে)
-
-- Auto video render (Phase 3, external worker)
-- Direct YouTube/TikTok upload (Phase 4)
-- ElevenLabs voiceover (Phase 2)
-- Real-time competitor scraping (manual digest দিয়ে replace)
-
----
-
-**বাস্তবতা:** এই system আপনাকে দিনে ১৫-৩০ মিনিট কাজ কমিয়ে দিবে, ১০০% replace করবে না। কারণ Trading content-এ আসল personality আপনার। AI = assistant, আপনি = strategist।
-
-Plan accept করলে "Implement" চাপুন — আমি Foundation থেকে শুরু করব।
+User must also: connect Lovable→GitHub integration manually before step 5.
