@@ -168,16 +168,44 @@ function ScriptDetail() {
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button size="sm" variant="outline" onClick={() => polish.mutate()} disabled={polish.isPending}>
-            <Sparkles className="h-4 w-4" /> Polish Bengali
+            <Sparkles className="h-4 w-4" /> Polish
           </Button>
           <Button size="sm" variant="outline" onClick={() => score.mutate()} disabled={score.isPending}>
             <Gauge className="h-4 w-4" /> Score
           </Button>
+          <Button size="sm" variant="outline" onClick={() => planAssets.mutate()} disabled={planAssets.isPending}>
+            <ImageIcon className="h-4 w-4" /> {planAssets.isPending ? "Planning…" : "Plan assets"}
+          </Button>
           <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending} className="bg-gradient-primary">
             <Save className="h-4 w-4" /> Save
           </Button>
+          <Button
+            size="sm"
+            onClick={() => render.mutate()}
+            disabled={render.isPending || !script.asset_plan}
+            className="bg-accent text-accent-foreground"
+          >
+            <Send className="h-4 w-4" /> {render.isPending ? "Dispatching…" : "Render via GitHub"}
+          </Button>
         </div>
       </div>
+
+      {script.render_status && script.render_status !== "idle" && (
+        <Card className="border-primary/30">
+          <CardContent className="pt-4 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Film className="h-4 w-4 text-primary" />
+              <span className="text-sm">Render status:</span>
+              <Badge className="bg-primary/20 text-primary border-primary/30">{script.render_status}</Badge>
+            </div>
+            {script.video_url && (
+              <a href={script.video_url} target="_blank" rel="noreferrer" className="text-sm text-primary underline">
+                Download MP4
+              </a>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
