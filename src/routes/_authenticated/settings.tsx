@@ -188,9 +188,13 @@ function GeminiKeysSection() {
   const { data: keys } = useQuery({
     queryKey: ["keys"],
     queryFn: async () => {
-      const { data } = await supabase.from("gemini_keys").select("id, label, active, created_at").order("created_at", { ascending: false });
+      const { data } = await supabase
+        .from("gemini_keys")
+        .select("id, label, active, cooldown_until, daily_calls, total_calls, failure_count, created_at")
+        .order("created_at", { ascending: true });
       return data ?? [];
     },
+    refetchInterval: 10000,
   });
   const add = useMutation({
     mutationFn: async () => {
@@ -206,28 +210,51 @@ function GeminiKeysSection() {
     mutationFn: async (id: string) => { await supabase.from("gemini_keys").delete().eq("id", id); },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["keys"] }),
   });
+  const toggle = useMutation({
+    mutationFn: async (k: any) => {
+      await supabase.from("gemini_keys").update({ active: !k.active }).eq("id", k.id);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["keys"] }),
+  });
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Backup Gemini Keys</CardTitle>
+        <CardTitle className="text-base">Gemini Key Pool</CardTitle>
         <CardDescription>
-          এই MVP-তে Lovable AI Gateway primary। Backup hisaabe ৩-৫টা personal Gemini keys save করতে পারেন (পরে rotate logic add হবে)।
+          aistudio.google.com থেকে free key নিয়ে ৫-১০টা add করুন। System round-robin rotate করবে, 429 হলে 1hr cooldown দিবে, পরে Lovable Gateway-তে fallback।
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <Input placeholder="Label" value={label} onChange={(e) => setLabel(e.target.value)} />
+        <Input placeholder="Label (e.g. main, backup-1)" value={label} onChange={(e) => setLabel(e.target.value)} />
         <Input placeholder="AIza… key" type="password" value={key} onChange={(e) => setKey(e.target.value)} />
         <Button onClick={() => add.mutate()} disabled={!label || !key}>Add key</Button>
         <div className="space-y-2">
-          {keys?.map((k: any) => (
-            <div key={k.id} className="flex justify-between items-center gap-2 rounded-md border border-border p-2">
-              <div className="text-sm">{k.label} {k.active ? "" : "(inactive)"}</div>
-              <Button size="icon" variant="ghost" onClick={() => del.mutate(k.id)}>
-                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-              </Button>
-            </div>
-          ))}
+          {keys?.map((k: any) => {
+            const onCooldown = k.cooldown_until && new Date(k.cooldown_until) > new Date();
+            return (
+              <div key={k.id} className="flex justify-between items-center gap-2 rounded-md border border-border p-2">
+                <div className="flex items-center gap-2 text-sm flex-1 min-w-0">
+                  <span
+                    className={`h-2 w-2 rounded-full shrink-0 ${
+                      !k.active ? "bg-muted" : onCooldown ? "bg-warning" : "bg-success"
+                    }`}
+                  />
+                  <span className="truncate">{k.label}</span>
+                  <Badge variant="outline" className="text-[10px]">
+                    {k.daily_calls ?? 0}/1500 today
+                  </Badge>
+                  {onCooldown && <Badge variant="outline" className="text-[10px] bg-warning/10">cooldown</Badge>}
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => toggle.mutate(k)}>
+                  {k.active ? "Disable" : "Enable"}
+                </Button>
+                <Button size="icon" variant="ghost" onClick={() => del.mutate(k.id)}>
+                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                </Button>
+              </div>
+            );
+          })}
         </div>
       </CardContent>
     </Card>
