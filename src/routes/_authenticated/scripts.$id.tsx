@@ -77,6 +77,33 @@ function ScriptDetail() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const planFn = useServerFn(planAssetsForScript);
+  const planAssets = useMutation({
+    mutationFn: () => planFn({ data: { scriptId: id } }),
+    onSuccess: () => {
+      toast.success("Asset plan ready");
+      qc.invalidateQueries({ queryKey: ["script", id] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const renderFn = useServerFn(triggerRender);
+  const render = useMutation({
+    mutationFn: () => renderFn({ data: { scriptId: id } }),
+    onSuccess: (d: any) => {
+      toast.success(`Render dispatched (job ${d.jobId?.slice(0, 8)})`);
+      qc.invalidateQueries({ queryKey: ["script", id] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const runsFn = useServerFn(getDualAiRuns);
+  const { data: runsData } = useQuery({
+    queryKey: ["dual-runs", id],
+    queryFn: () => runsFn({ data: { scriptId: id } }),
+  });
+  const runs = (runsData as any)?.runs ?? [];
+
   const downloadSRT = () => {
     if (!script?.srt) return;
     const blob = new Blob([script.srt], { type: "text/plain" });
