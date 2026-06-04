@@ -163,17 +163,25 @@ function IdeasPage() {
                     </div>
                     <div className="font-medium text-sm">{v.hook}</div>
                     <div className="text-xs text-muted-foreground">{v.summary}</div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      onClick={() =>
-                        makeScript.mutate({ ideaId: idea.id, variantIndex: i })
-                      }
-                      disabled={makeScript.isPending || idea.status === "rejected"}
-                    >
-                      <Zap className="h-3 w-3" /> Make script
-                    </Button>
+                    <div className="space-y-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => makeScript.mutate({ ideaId: idea.id, variantIndex: i })}
+                        disabled={makeScript.isPending || makeDual.isPending || idea.status === "rejected"}
+                      >
+                        <Zap className="h-3 w-3" /> Single-shot
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="w-full bg-gradient-primary"
+                        onClick={() => makeDual.mutate({ ideaId: idea.id, variantIndex: i })}
+                        disabled={makeScript.isPending || makeDual.isPending || idea.status === "rejected"}
+                      >
+                        <Bot className="h-3 w-3" /> Dual-AI (9/10)
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
