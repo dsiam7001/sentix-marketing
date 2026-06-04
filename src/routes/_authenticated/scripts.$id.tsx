@@ -308,6 +308,64 @@ function ScriptDetail() {
           )}
         </CardContent>
       </Card>
+
+      {runs.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Bot className="h-4 w-4 text-primary" /> Dual-AI Dialog ({runs.length} steps)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {runs.map((r: any) => (
+              <div key={r.id} className="rounded-md border border-border p-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-mono">
+                    Iter {r.iteration} · <span className={r.role === "critic" ? "text-accent" : "text-primary"}>{r.role}</span>
+                  </span>
+                  {r.score != null && <Badge variant="outline">score {Number(r.score).toFixed(1)}</Badge>}
+                </div>
+                {r.role === "critic" && r.feedback && (
+                  <div className="text-xs mt-1 whitespace-pre-wrap text-muted-foreground">{r.feedback}</div>
+                )}
+                {r.role === "strategist" && r.content?.hook && (
+                  <div className="text-xs mt-1 text-muted-foreground">Hook: {r.content.hook}</div>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {script.asset_plan && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-primary" /> Asset Plan ({(script.asset_plan as any[]).length} scenes)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {(script.asset_plan as any[]).map((p: any, i: number) => (
+              <div key={i} className="flex gap-3 rounded-md border border-border p-2">
+                {p.chosen?.preview ? (
+                  <img src={p.chosen.preview} alt="" className="w-24 h-14 object-cover rounded" />
+                ) : (
+                  <div className="w-24 h-14 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground">
+                    {p.chosen?.source ?? "—"}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0 text-xs">
+                  <div className="font-mono text-primary">{p.start_sec}s—{p.end_sec}s · <Badge variant="outline" className="text-[10px]">{p.chosen?.source}</Badge></div>
+                  <div className="truncate text-muted-foreground">{p.keyword}</div>
+                  {p.chosen?.url && (
+                    <a href={p.chosen.url} target="_blank" rel="noreferrer" className="text-primary underline truncate block">asset link</a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
