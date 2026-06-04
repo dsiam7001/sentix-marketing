@@ -1,0 +1,136 @@
+name: Sentix Render
+
+on:
+  repository_dispatch:
+    types: [sentix-render]
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: "Job ID (for manual test)"
+        required: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg jq
+
+      - name: Install edge-tts
+        run: pip install --quiet edge-tts
+
+      - name: Write data.json from dispatch payload
+        env:
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: |
+          echo "$PAYLOAD" > data.json
+          jq '.title, .scenes | length' data.json
+
+      - name: Generate Bengali voiceover (Edge-TTS)
+        run: |
+          jq -r '.full_script' data.json > narration.txt
+          python3 .github/workflows/scripts/tts.py --text-file narration.txt --voice bn-BD-PradeepNeural --out audio.mp3 --captions captions.json
+          ls -la audio.mp3
+
+      - name: Localize assets (Pexels / Pollinations etc.)
+        run: python3 .github/workflows/scripts/fetch_assets.py
+
+      - name: Move audio + data into remotion/public
+        run: |
+          mkdir -p remotion/public
+          cp audio.mp3 remotion/public/audio.mp3
+          jq '. + { audio_url: "audio.mp3" }' data.json > remotion/public/data.json
+
+      - name: Install Remotion deps
+        working-directory: remotion
+        run: npm install --no-audit --no-fund
+
+      - name: Render MP4
+        working-directory: remotion
+        run: node scripts/render.mjs
+
+      - name: Inject anti-detection metadata + frame dithering
+        run: |
+          mkdir -p out
+          mv remotion/../out/output.mp4 out/raw.mp4 || mv out/output.mp4 out/raw.mp4 || true
+          # Locate produced file
+          IN=$(find . -maxdepth 4 -name 'output.mp4' | head -1)
+          if [ -z "$IN" ]; then IN=out/raw.mp4; fi
+          ffmpeg -y -i "$IN" \
+            -vf "noise=alls=2:allf=t,hflip=0" \
+            -metadata make="Apple" \
+            -metadata model="iPhone 15 Pro" \
+            -metadata software="iOS 18.2.1" \
+            -metadata location="+23.7806+090.4193/" \
+            -metadata creation_time="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k \
+            out/final.mp4
+          ls -la out/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentix-video-${{ github.event.client_payload.job_id }}
+          path: out/final.mp4
+          retention-days: 14
+
+      - name: Send to Telegram
+        if: env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TITLE: ${{ github.event.client_payload.title }}
+        run: |
+          curl -sS -F "chat_id=$TELEGRAM_CHAT_ID" \
+            -F "caption=🎬 ${TITLE} (Sentix AI)" \
+            -F "video=@out/final.mp4" \
+            "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendVideo" || true
+
+      - name: Notify Lovable callback (success)
+        if: success()
+        env:
+          CB: ${{ github.event.client_payload.callback_url }}
+          JOB: ${{ github.event.client_payload.job_id }}
+          SCRIPT: ${{ github.event.client_payload.script_id }}
+          SIG: ${{ github.event.client_payload.signature }}
+          ARTIFACT_URL: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        run: |
+          curl -sS -X POST "$CB" -H "Content-Type: application/json" -d "{
+            \"job_id\": \"$JOB\",
+            \"script_id\": \"$SCRIPT\",
+            \"signature\": \"$SIG\",
+            \"status\": \"succeeded\",
+            \"video_url\": \"$ARTIFACT_URL\",
+            \"github_run_id\": \"${{ github.run_id }}\"
+          }" || true
+
+      - name: Notify Lovable callback (failure)
+        if: failure()
+        env:
+          CB: ${{ github.event.client_payload.callback_url }}
+          JOB: ${{ github.event.client_payload.job_id }}
+          SCRIPT: ${{ github.event.client_payload.script_id }}
+          SIG: ${{ github.event.client_payload.signature }}
+        run: |
+          curl -sS -X POST "$CB" -H "Content-Type: application/json" -d "{
+            \"job_id\": \"$JOB\",
+            \"script_id\": \"$SCRIPT\",
+            \"signature\": \"$SIG\",
+            \"status\": \"failed\",
+            \"error\": \"render failed; see run ${{ github.run_id }}\",
+            \"github_run_id\": \"${{ github.run_id }}\"
+          }" || true
