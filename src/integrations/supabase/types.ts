@@ -52,6 +52,45 @@ export type Database = {
           },
         ]
       }
+      asset_cache: {
+        Row: {
+          created_at: string
+          id: string
+          last_used: string
+          metadata: Json | null
+          query: string
+          query_hash: string
+          source: string
+          url: string
+          used_count: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_used?: string
+          metadata?: Json | null
+          query: string
+          query_hash: string
+          source: string
+          url: string
+          used_count?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_used?: string
+          metadata?: Json | null
+          query?: string
+          query_hash?: string
+          source?: string
+          url?: string
+          used_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       competitor_channels: {
         Row: {
           channel_name: string
@@ -172,38 +211,107 @@ export type Database = {
         }
         Relationships: []
       }
+      dual_ai_runs: {
+        Row: {
+          content: Json
+          created_at: string
+          feedback: string | null
+          final_status: string | null
+          id: string
+          idea_id: string | null
+          iteration: number
+          role: string
+          score: number | null
+          script_id: string | null
+          user_id: string
+        }
+        Insert: {
+          content: Json
+          created_at?: string
+          feedback?: string | null
+          final_status?: string | null
+          id?: string
+          idea_id?: string | null
+          iteration?: number
+          role: string
+          score?: number | null
+          script_id?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          feedback?: string | null
+          final_status?: string | null
+          id?: string
+          idea_id?: string | null
+          iteration?: number
+          role?: string
+          score?: number | null
+          script_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dual_ai_runs_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "content_ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dual_ai_runs_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "scripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gemini_keys: {
         Row: {
           active: boolean
           cooldown_until: string | null
           created_at: string
+          daily_calls: number
+          daily_reset_at: string
           failure_count: number
           id: string
           key_value: string
           label: string
+          last_429_at: string | null
           last_used: string | null
+          total_calls: number
           user_id: string
         }
         Insert: {
           active?: boolean
           cooldown_until?: string | null
           created_at?: string
+          daily_calls?: number
+          daily_reset_at?: string
           failure_count?: number
           id?: string
           key_value: string
           label: string
+          last_429_at?: string | null
           last_used?: string | null
+          total_calls?: number
           user_id: string
         }
         Update: {
           active?: boolean
           cooldown_until?: string | null
           created_at?: string
+          daily_calls?: number
+          daily_reset_at?: string
           failure_count?: number
           id?: string
           key_value?: string
           label?: string
+          last_429_at?: string | null
           last_used?: string | null
+          total_calls?: number
           user_id?: string
         }
         Relationships: []
@@ -262,20 +370,79 @@ export type Database = {
         }
         Relationships: []
       }
+      render_jobs: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          github_run_id: string | null
+          id: string
+          payload: Json | null
+          script_id: string
+          started_at: string
+          status: string
+          user_id: string
+          video_url: string | null
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          github_run_id?: string | null
+          id?: string
+          payload?: Json | null
+          script_id: string
+          started_at?: string
+          status?: string
+          user_id: string
+          video_url?: string | null
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          github_run_id?: string | null
+          id?: string
+          payload?: Json | null
+          script_id?: string
+          started_at?: string
+          status?: string
+          user_id?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "render_jobs_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "scripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scripts: {
         Row: {
+          asset_plan: Json | null
+          audio_url: string | null
           caption: string | null
           created_at: string
           duration_sec: number | null
           effects: Json | null
+          final_score: number | null
           full_script: string
           hashtags: string | null
           hook: string | null
           id: string
           idea_id: string | null
+          iterations_used: number
           music_mood: string | null
+          needs_review_reason: string | null
           on_screen_text: Json | null
           polished: boolean
+          render_status: string
           scenes: Json
           srt: string | null
           status: string
@@ -283,22 +450,29 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          video_url: string | null
           virality_breakdown: Json | null
           virality_score: number | null
         }
         Insert: {
+          asset_plan?: Json | null
+          audio_url?: string | null
           caption?: string | null
           created_at?: string
           duration_sec?: number | null
           effects?: Json | null
+          final_score?: number | null
           full_script: string
           hashtags?: string | null
           hook?: string | null
           id?: string
           idea_id?: string | null
+          iterations_used?: number
           music_mood?: string | null
+          needs_review_reason?: string | null
           on_screen_text?: Json | null
           polished?: boolean
+          render_status?: string
           scenes?: Json
           srt?: string | null
           status?: string
@@ -306,22 +480,29 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          video_url?: string | null
           virality_breakdown?: Json | null
           virality_score?: number | null
         }
         Update: {
+          asset_plan?: Json | null
+          audio_url?: string | null
           caption?: string | null
           created_at?: string
           duration_sec?: number | null
           effects?: Json | null
+          final_score?: number | null
           full_script?: string
           hashtags?: string | null
           hook?: string | null
           id?: string
           idea_id?: string | null
+          iterations_used?: number
           music_mood?: string | null
+          needs_review_reason?: string | null
           on_screen_text?: Json | null
           polished?: boolean
+          render_status?: string
           scenes?: Json
           srt?: string | null
           status?: string
@@ -329,6 +510,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          video_url?: string | null
           virality_breakdown?: Json | null
           virality_score?: number | null
         }

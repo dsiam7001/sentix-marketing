@@ -2,12 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { generateIdeas, generateScript } from "@/lib/ai.functions";
+import { runDualAILoop } from "@/lib/dual-ai.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Sparkles, Zap, Heart, Brain, BookOpen } from "lucide-react";
+import { Sparkles, Zap, Heart, Brain, BookOpen, Bot } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/ideas")({
   component: IdeasPage,
@@ -60,6 +61,19 @@ function IdeasPage() {
       toast.success("Script created");
       qc.invalidateQueries({ queryKey: ["ideas"] });
       window.location.href = `/scripts/${(data as any).script.id}`;
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const dualFn = useServerFn(runDualAILoop);
+  const makeDual = useMutation({
+    mutationFn: (v: { ideaId: string; variantIndex: number }) => dualFn({ data: v }),
+    onSuccess: (data: any) => {
+      const status = data?.status ?? "done";
+      const score = data?.score ?? 0;
+      toast.success(`Dual-AI ${status} (score ${score?.toFixed?.(1) ?? score})`);
+      qc.invalidateQueries({ queryKey: ["ideas"] });
+      if (data?.scriptId) window.location.href = `/scripts/${data.scriptId}`;
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -149,17 +163,25 @@ function IdeasPage() {
                     </div>
                     <div className="font-medium text-sm">{v.hook}</div>
                     <div className="text-xs text-muted-foreground">{v.summary}</div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      onClick={() =>
-                        makeScript.mutate({ ideaId: idea.id, variantIndex: i })
-                      }
-                      disabled={makeScript.isPending || idea.status === "rejected"}
-                    >
-                      <Zap className="h-3 w-3" /> Make script
-                    </Button>
+                    <div className="space-y-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => makeScript.mutate({ ideaId: idea.id, variantIndex: i })}
+                        disabled={makeScript.isPending || makeDual.isPending || idea.status === "rejected"}
+                      >
+                        <Zap className="h-3 w-3" /> Single-shot
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="w-full bg-gradient-primary"
+                        onClick={() => makeDual.mutate({ ideaId: idea.id, variantIndex: i })}
+                        disabled={makeScript.isPending || makeDual.isPending || idea.status === "rejected"}
+                      >
+                        <Bot className="h-3 w-3" /> Dual-AI (9/10)
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

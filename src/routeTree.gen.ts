@@ -19,7 +19,9 @@ import { Route as AuthenticatedInspirationRouteImport } from './routes/_authenti
 import { Route as AuthenticatedIdeasRouteImport } from './routes/_authenticated/ideas'
 import { Route as AuthenticatedHooksRouteImport } from './routes/_authenticated/hooks'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedControlRouteImport } from './routes/_authenticated/control'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as ApiPublicRenderCallbackRouteImport } from './routes/api/public/render-callback'
 import { Route as AuthenticatedScriptsIdRouteImport } from './routes/_authenticated/scripts.$id'
 
 const AuthRoute = AuthRouteImport.update({
@@ -73,10 +75,20 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedControlRoute = AuthenticatedControlRouteImport.update({
+  id: '/control',
+  path: '/control',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiPublicRenderCallbackRoute = ApiPublicRenderCallbackRouteImport.update({
+  id: '/api/public/render-callback',
+  path: '/api/public/render-callback',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedScriptsIdRoute = AuthenticatedScriptsIdRouteImport.update({
   id: '/$id',
@@ -88,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/control': typeof AuthenticatedControlRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/hooks': typeof AuthenticatedHooksRoute
   '/ideas': typeof AuthenticatedIdeasRoute
@@ -96,11 +109,13 @@ export interface FileRoutesByFullPath {
   '/scripts': typeof AuthenticatedScriptsRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/scripts/$id': typeof AuthenticatedScriptsIdRoute
+  '/api/public/render-callback': typeof ApiPublicRenderCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/control': typeof AuthenticatedControlRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/hooks': typeof AuthenticatedHooksRoute
   '/ideas': typeof AuthenticatedIdeasRoute
@@ -109,6 +124,7 @@ export interface FileRoutesByTo {
   '/scripts': typeof AuthenticatedScriptsRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/scripts/$id': typeof AuthenticatedScriptsIdRoute
+  '/api/public/render-callback': typeof ApiPublicRenderCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,6 +132,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
+  '/_authenticated/control': typeof AuthenticatedControlRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/hooks': typeof AuthenticatedHooksRoute
   '/_authenticated/ideas': typeof AuthenticatedIdeasRoute
@@ -124,6 +141,7 @@ export interface FileRoutesById {
   '/_authenticated/scripts': typeof AuthenticatedScriptsRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/scripts/$id': typeof AuthenticatedScriptsIdRoute
+  '/api/public/render-callback': typeof ApiPublicRenderCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/calendar'
+    | '/control'
     | '/dashboard'
     | '/hooks'
     | '/ideas'
@@ -139,11 +158,13 @@ export interface FileRouteTypes {
     | '/scripts'
     | '/settings'
     | '/scripts/$id'
+    | '/api/public/render-callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/calendar'
+    | '/control'
     | '/dashboard'
     | '/hooks'
     | '/ideas'
@@ -152,12 +173,14 @@ export interface FileRouteTypes {
     | '/scripts'
     | '/settings'
     | '/scripts/$id'
+    | '/api/public/render-callback'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/calendar'
+    | '/_authenticated/control'
     | '/_authenticated/dashboard'
     | '/_authenticated/hooks'
     | '/_authenticated/ideas'
@@ -166,12 +189,14 @@ export interface FileRouteTypes {
     | '/_authenticated/scripts'
     | '/_authenticated/settings'
     | '/_authenticated/scripts/$id'
+    | '/api/public/render-callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicRenderCallbackRoute: typeof ApiPublicRenderCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -246,12 +271,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/control': {
+      id: '/_authenticated/control'
+      path: '/control'
+      fullPath: '/control'
+      preLoaderRoute: typeof AuthenticatedControlRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/calendar': {
       id: '/_authenticated/calendar'
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/render-callback': {
+      id: '/api/public/render-callback'
+      path: '/api/public/render-callback'
+      fullPath: '/api/public/render-callback'
+      preLoaderRoute: typeof ApiPublicRenderCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/scripts/$id': {
       id: '/_authenticated/scripts/$id'
@@ -276,6 +315,7 @@ const AuthenticatedScriptsRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
+  AuthenticatedControlRoute: typeof AuthenticatedControlRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHooksRoute: typeof AuthenticatedHooksRoute
   AuthenticatedIdeasRoute: typeof AuthenticatedIdeasRoute
@@ -287,6 +327,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
+  AuthenticatedControlRoute: AuthenticatedControlRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHooksRoute: AuthenticatedHooksRoute,
   AuthenticatedIdeasRoute: AuthenticatedIdeasRoute,
@@ -303,17 +344,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicRenderCallbackRoute: ApiPublicRenderCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
