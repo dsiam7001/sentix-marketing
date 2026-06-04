@@ -12,11 +12,13 @@ import {
   Settings,
   LogOut,
   Sparkles,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/control", label: "Mission Control", icon: Activity },
   { to: "/ideas", label: "Idea Lab", icon: Lightbulb },
   { to: "/scripts", label: "Script Studio", icon: FileText },
   { to: "/hooks", label: "Hook Library", icon: Hash },

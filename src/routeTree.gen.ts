@@ -19,6 +19,7 @@ import { Route as AuthenticatedInspirationRouteImport } from './routes/_authenti
 import { Route as AuthenticatedIdeasRouteImport } from './routes/_authenticated/ideas'
 import { Route as AuthenticatedHooksRouteImport } from './routes/_authenticated/hooks'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedControlRouteImport } from './routes/_authenticated/control'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as ApiPublicRenderCallbackRouteImport } from './routes/api/public/render-callback'
 import { Route as AuthenticatedScriptsIdRouteImport } from './routes/_authenticated/scripts.$id'
@@ -74,6 +75,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedControlRoute = AuthenticatedControlRouteImport.update({
+  id: '/control',
+  path: '/control',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/control': typeof AuthenticatedControlRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/hooks': typeof AuthenticatedHooksRoute
   '/ideas': typeof AuthenticatedIdeasRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof AuthenticatedCalendarRoute
+  '/control': typeof AuthenticatedControlRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/hooks': typeof AuthenticatedHooksRoute
   '/ideas': typeof AuthenticatedIdeasRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
+  '/_authenticated/control': typeof AuthenticatedControlRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/hooks': typeof AuthenticatedHooksRoute
   '/_authenticated/ideas': typeof AuthenticatedIdeasRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/calendar'
+    | '/control'
     | '/dashboard'
     | '/hooks'
     | '/ideas'
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/calendar'
+    | '/control'
     | '/dashboard'
     | '/hooks'
     | '/ideas'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/calendar'
+    | '/_authenticated/control'
     | '/_authenticated/dashboard'
     | '/_authenticated/hooks'
     | '/_authenticated/ideas'
@@ -259,6 +271,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/control': {
+      id: '/_authenticated/control'
+      path: '/control'
+      fullPath: '/control'
+      preLoaderRoute: typeof AuthenticatedControlRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/calendar': {
       id: '/_authenticated/calendar'
       path: '/calendar'
@@ -296,6 +315,7 @@ const AuthenticatedScriptsRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
+  AuthenticatedControlRoute: typeof AuthenticatedControlRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHooksRoute: typeof AuthenticatedHooksRoute
   AuthenticatedIdeasRoute: typeof AuthenticatedIdeasRoute
@@ -307,6 +327,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
+  AuthenticatedControlRoute: AuthenticatedControlRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHooksRoute: AuthenticatedHooksRoute,
   AuthenticatedIdeasRoute: AuthenticatedIdeasRoute,
@@ -328,3 +349,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
