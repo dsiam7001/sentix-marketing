@@ -2,12 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { generateIdeas, generateScript } from "@/lib/ai.functions";
+import { runDualAILoop } from "@/lib/dual-ai.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Sparkles, Zap, Heart, Brain, BookOpen } from "lucide-react";
+import { Sparkles, Zap, Heart, Brain, BookOpen, Bot } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/ideas")({
   component: IdeasPage,
