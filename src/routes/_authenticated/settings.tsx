@@ -1,13 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { getIntegrationStatus } from "@/lib/integrations.functions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, CircleCheck, CircleAlert } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
@@ -19,13 +22,57 @@ function SettingsPage() {
       <div>
         <h1 className="text-3xl font-bold text-gradient">Settings</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Style Memory, Sentix features, backup Gemini keys
+          Integrations · Style Memory · Sentix features · Gemini key pool
         </p>
       </div>
+      <IntegrationStatusSection />
       <StyleMemorySection />
       <SentixFeaturesSection />
       <GeminiKeysSection />
     </div>
+  );
+}
+
+function IntegrationStatusSection() {
+  const fn = useServerFn(getIntegrationStatus);
+  const { data } = useQuery({ queryKey: ["integrations"], queryFn: () => fn() });
+  const s: any = data ?? {};
+  const rows = [
+    { k: "lovable_gateway", label: "Lovable AI Gateway", required: true },
+    { k: "pexels", label: "Pexels API (free assets)", required: true },
+    { k: "pixabay", label: "Pixabay API (free assets)", required: false },
+    { k: "github_pat", label: "GitHub PAT (render trigger)", required: true },
+    { k: "github_repo", label: "GitHub Repo (OWNER + NAME)", required: true },
+    { k: "render_callback_secret", label: "Render Callback Secret (HMAC)", required: true },
+    { k: "telegram_bot", label: "Telegram Bot (delivery)", required: false },
+  ];
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Integration Status</CardTitle>
+        <CardDescription>
+          Free-tier external services। Lovable Cloud secrets-এ add করতে হবে (Project → Secrets)।
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-1.5">
+        {rows.map((r) => (
+          <div key={r.k} className="flex items-center justify-between text-sm">
+            <span className="flex items-center gap-2">
+              {s[r.k] ? (
+                <CircleCheck className="h-4 w-4 text-success" />
+              ) : (
+                <CircleAlert className={`h-4 w-4 ${r.required ? "text-destructive" : "text-muted-foreground"}`} />
+              )}
+              {r.label}
+              {!s[r.k] && r.required && <Badge variant="outline" className="text-[10px]">required</Badge>}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {s[r.k] ? "configured" : "missing"}
+            </span>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 
