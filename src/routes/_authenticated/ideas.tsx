@@ -65,6 +65,19 @@ function IdeasPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const dualFn = useServerFn(runDualAILoop);
+  const makeDual = useMutation({
+    mutationFn: (v: { ideaId: string; variantIndex: number }) => dualFn({ data: v }),
+    onSuccess: (data: any) => {
+      const status = data?.status ?? "done";
+      const score = data?.score ?? 0;
+      toast.success(`Dual-AI ${status} (score ${score?.toFixed?.(1) ?? score})`);
+      qc.invalidateQueries({ queryKey: ["ideas"] });
+      if (data?.scriptId) window.location.href = `/scripts/${data.scriptId}`;
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const reject = useMutation({
     mutationFn: async (id: string) => {
       await supabase.from("content_ideas").update({ status: "rejected" }).eq("id", id);
