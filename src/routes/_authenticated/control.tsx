@@ -427,3 +427,119 @@ function Row({ k, v, highlight }: { k: string; v: any; highlight?: boolean }) {
     </div>
   );
 }
+
+function SystemDoctorCard() {
+  const qc = useQueryClient();
+  const docFn = useServerFn(runSystemDoctor);
+  const histFn = useServerFn(recentDiagnostics);
+  const { data: hist } = useQuery({ queryKey: ["doc-hist"], queryFn: () => histFn() });
+  const last = (hist as any)?.runs?.[0];
+
+  const run = useMutation({
+    mutationFn: (mode: "short" | "full") => docFn({ data: { mode } }),
+    onSuccess: (r: any) => {
+      const s = r.summary;
+      toast.success(`Doctor: ${s.ok}/${s.total} ok · ${s.fail} fail · ${s.warn} warn · ${s.skip} skip`);
+      qc.invalidateQueries({ queryKey: ["doc-hist"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
+          <span className="flex items-center gap-2"><Stethoscope className="h-4 w-4 text-primary" /> System Doctor</span>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => run.mutate("short")} disabled={run.isPending}>
+              {run.isPending ? "Running…" : "Run diagnostic"}
+            </Button>
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {!last ? (
+          <p className="text-xs text-muted-foreground">এখনো diagnostic চালানো হয়নি — Telegram pingসহ live test করুন।</p>
+        ) : (
+          <>
+            <div className="text-xs text-muted-foreground">
+              Last run: {new Date(last.started_at).toLocaleString()} · ok {last.summary?.ok ?? 0} / fail {last.summary?.fail ?? 0} / warn {last.summary?.warn ?? 0} / skip {last.summary?.skip ?? 0}
+            </div>
+            <div className="space-y-1">
+              {(last.steps as any[])?.map((s) => (
+                <div key={s.id} className="flex items-center justify-between text-xs gap-2">
+                  <span className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span className={`h-2 w-2 rounded-full shrink-0 ${
+                      s.status === "ok" ? "bg-success" :
+                      s.status === "fail" ? "bg-destructive" :
+                      s.status === "warn" ? "bg-warning" : "bg-muted"
+                    }`} />
+                    <span className="truncate">{s.label}</span>
+                  </span>
+                  <span className="text-muted-foreground truncate max-w-[40%]">{typeof s.proof === "string" ? s.proof : JSON.stringify(s.proof)?.slice(0, 60)}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function GuardLabCard() {
+  const fn = useServerFn(recentGuardReports);
+  const { data } = useQuery({ queryKey: ["guard-reports"], queryFn: () => fn(), refetchInterval: 15000 });
+  const reports = (data as any)?.reports ?? [];
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> Guard Lab (last 20)</CardTitle>
+      </CardHeader>
+      <CardContent className="text-sm space-y-1.5">
+        {reports.length === 0 ? (
+          <p className="text-xs text-muted-foreground">কোনো guardrail report নেই। (AudD/Sightengine/AssemblyAI keys add করলে auto run হবে)</p>
+        ) : reports.map((r: any) => (
+          <div key={r.id} className="flex items-center justify-between text-xs gap-2">
+            <span className="truncate flex-1">{r.scripts?.title ?? "—"}</span>
+            <Badge variant="outline" className={
+              r.verdict === "clear" ? "bg-success/10 text-success border-success/30" :
+              r.verdict === "warn" ? "bg-warning/10 text-warning border-warning/30" :
+              "bg-destructive/10 text-destructive border-destructive/30"
+            }>{r.verdict}</Badge>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PipelineRunsCard() {
+  const fn = useServerFn(recentPipelineRuns);
+  const { data } = useQuery({ queryKey: ["pipeline-runs"], queryFn: () => fn(), refetchInterval: 10000 });
+  const runs = (data as any)?.runs ?? [];
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> Autopilot Timeline (last 50)</CardTitle>
+      </CardHeader>
+      <CardContent className="text-xs space-y-1 max-h-72 overflow-auto">
+        {runs.length === 0 ? (
+          <p className="text-muted-foreground">কোনো autopilot run নেই। <Link to="/settings" className="text-primary underline">Settings</Link> থেকে enable করুন।</p>
+        ) : runs.map((r: any) => (
+          <div key={r.id} className="flex items-center gap-2">
+            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+              r.status === "ok" ? "bg-success" :
+              r.status === "failed" ? "bg-destructive" :
+              r.status === "warn" ? "bg-warning" : "bg-muted"
+            }`} />
+            <span className="text-muted-foreground tabular-nums">{new Date(r.created_at).toLocaleTimeString()}</span>
+            <span className="font-mono">{r.slot ?? "—"}</span>
+            <span className="font-medium">{r.stage}</span>
+            <span className="text-muted-foreground truncate flex-1">{r.message}</span>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
