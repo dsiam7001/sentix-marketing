@@ -1,11 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getRecentRenders } from "@/lib/render.functions";
+import { runSystemDoctor, recentDiagnostics } from "@/lib/system-doctor.functions";
+import { recentGuardReports } from "@/lib/guardrails.functions";
+import { recentPipelineRuns } from "@/lib/autopilot.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Activity,
   Battery,
@@ -16,6 +22,8 @@ import {
   Film,
   Gauge,
   Image as ImageIcon,
+  ShieldCheck,
+  Stethoscope,
   TrendingUp,
   Wallet,
   Zap,
