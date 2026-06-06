@@ -25,6 +25,7 @@ function IdeasPage() {
         .from("content_ideas")
         .select("*")
         .eq("for_date", today)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       return data ?? [];
     },
