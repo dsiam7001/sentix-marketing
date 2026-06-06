@@ -377,6 +377,10 @@ function ControlPage() {
         </Card>
       </div>
 
+      <SystemDoctorCard />
+      <GuardLabCard />
+      <PipelineRunsCard />
+
       {/* Phase 4 placeholder */}
       <Card className="border-muted/30 bg-muted/5">
         <CardHeader>
