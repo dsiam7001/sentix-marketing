@@ -13,10 +13,17 @@ async function ensureAdmin(ctx: any) {
   if (!data) throw new Error("Forbidden: admin only");
 }
 
-function callbackUrl() {
-  const projectId = process.env.SUPABASE_PROJECT_ID ?? "";
-  // Stable dev URL pattern (works for both preview + published)
-  return `https://project--490123ce-11f1-405e-91bd-0d2ba0200065-dev.lovable.app/api/public/render-callback`;
+async function callbackUrl(supabase: any, userId: string) {
+  const { getUserSecret } = await import("./secrets.server");
+  const base = (await getUserSecret(supabase, userId, "PUBLIC_BASE_URL"))
+    ?? process.env.PUBLIC_BASE_URL
+    ?? "https://project--490123ce-11f1-405e-91bd-0d2ba0200065.lovable.app";
+  return `${base.replace(/\/$/, "")}/api/public/render-callback`;
+}
+
+async function getSecret(supabase: any, userId: string, name: string) {
+  const { getUserSecret } = await import("./secrets.server");
+  return getUserSecret(supabase, userId, name);
 }
 
 export const triggerRender = createServerFn({ method: "POST" })
@@ -26,10 +33,10 @@ export const triggerRender = createServerFn({ method: "POST" })
     await ensureAdmin(context);
     const ctx: any = context;
 
-    const pat = process.env.GITHUB_PAT;
-    const owner = process.env.GITHUB_REPO_OWNER;
-    const repo = process.env.GITHUB_REPO_NAME;
-    const secret = process.env.RENDER_CALLBACK_SECRET;
+    const pat = await getSecret(ctx.supabase, ctx.userId, "GITHUB_PAT");
+    const owner = await getSecret(ctx.supabase, ctx.userId, "GITHUB_REPO_OWNER");
+    const repo = await getSecret(ctx.supabase, ctx.userId, "GITHUB_REPO_NAME");
+    const secret = await getSecret(ctx.supabase, ctx.userId, "RENDER_CALLBACK_SECRET");
     if (!pat || !owner || !repo || !secret) {
       throw new Error(
         "GitHub render not configured. Settings → add GITHUB_PAT, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, RENDER_CALLBACK_SECRET",
