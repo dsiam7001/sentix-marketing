@@ -25,6 +25,7 @@ function IdeasPage() {
         .from("content_ideas")
         .select("*")
         .eq("for_date", today)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       return data ?? [];
     },
@@ -83,6 +84,13 @@ function IdeasPage() {
       await supabase.from("content_ideas").update({ status: "rejected" }).eq("id", id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["ideas"] }),
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("content_ideas").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+    },
+    onSuccess: () => { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["ideas"] }); },
   });
 
   return (
@@ -186,13 +194,12 @@ function IdeasPage() {
                 ))}
               </div>
 
-              {idea.status !== "rejected" && (
-                <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => reject.mutate(idea.id)}>
-                    Reject
-                  </Button>
-                </div>
-              )}
+              <div className="flex gap-2">
+                {idea.status !== "rejected" && (
+                  <Button size="sm" variant="ghost" onClick={() => reject.mutate(idea.id)}>Reject</Button>
+                )}
+                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => del.mutate(idea.id)}>Delete</Button>
+              </div>
             </CardContent>
           </Card>
         ))}

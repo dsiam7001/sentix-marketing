@@ -22,6 +22,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedControlRouteImport } from './routes/_authenticated/control'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as ApiPublicRenderCallbackRouteImport } from './routes/api/public/render-callback'
+import { Route as ApiPublicAutopilotTickRouteImport } from './routes/api/public/autopilot-tick'
 import { Route as AuthenticatedScriptsIdRouteImport } from './routes/_authenticated/scripts.$id'
 
 const AuthRoute = AuthRouteImport.update({
@@ -90,6 +91,11 @@ const ApiPublicRenderCallbackRoute = ApiPublicRenderCallbackRouteImport.update({
   path: '/api/public/render-callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAutopilotTickRoute = ApiPublicAutopilotTickRouteImport.update({
+  id: '/api/public/autopilot-tick',
+  path: '/api/public/autopilot-tick',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedScriptsIdRoute = AuthenticatedScriptsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/scripts': typeof AuthenticatedScriptsRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/scripts/$id': typeof AuthenticatedScriptsIdRoute
+  '/api/public/autopilot-tick': typeof ApiPublicAutopilotTickRoute
   '/api/public/render-callback': typeof ApiPublicRenderCallbackRoute
 }
 export interface FileRoutesByTo {
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/scripts': typeof AuthenticatedScriptsRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/scripts/$id': typeof AuthenticatedScriptsIdRoute
+  '/api/public/autopilot-tick': typeof ApiPublicAutopilotTickRoute
   '/api/public/render-callback': typeof ApiPublicRenderCallbackRoute
 }
 export interface FileRoutesById {
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/_authenticated/scripts': typeof AuthenticatedScriptsRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/scripts/$id': typeof AuthenticatedScriptsIdRoute
+  '/api/public/autopilot-tick': typeof ApiPublicAutopilotTickRoute
   '/api/public/render-callback': typeof ApiPublicRenderCallbackRoute
 }
 export interface FileRouteTypes {
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/scripts'
     | '/settings'
     | '/scripts/$id'
+    | '/api/public/autopilot-tick'
     | '/api/public/render-callback'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
     | '/scripts'
     | '/settings'
     | '/scripts/$id'
+    | '/api/public/autopilot-tick'
     | '/api/public/render-callback'
   id:
     | '__root__'
@@ -189,6 +200,7 @@ export interface FileRouteTypes {
     | '/_authenticated/scripts'
     | '/_authenticated/settings'
     | '/_authenticated/scripts/$id'
+    | '/api/public/autopilot-tick'
     | '/api/public/render-callback'
   fileRoutesById: FileRoutesById
 }
@@ -196,6 +208,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicAutopilotTickRoute: typeof ApiPublicAutopilotTickRoute
   ApiPublicRenderCallbackRoute: typeof ApiPublicRenderCallbackRoute
 }
 
@@ -292,6 +305,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRenderCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/autopilot-tick': {
+      id: '/api/public/autopilot-tick'
+      path: '/api/public/autopilot-tick'
+      fullPath: '/api/public/autopilot-tick'
+      preLoaderRoute: typeof ApiPublicAutopilotTickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/scripts/$id': {
       id: '/_authenticated/scripts/$id'
       path: '/$id'
@@ -344,18 +364,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicAutopilotTickRoute: ApiPublicAutopilotTickRoute,
   ApiPublicRenderCallbackRoute: ApiPublicRenderCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
