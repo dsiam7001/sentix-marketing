@@ -770,6 +770,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_secrets: {
+        Row: {
+          created_at: string
+          last_test_message: string | null
+          last_test_ok: boolean | null
+          last_tested_at: string | null
+          name: string
+          updated_at: string
+          user_id: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          last_test_message?: string | null
+          last_test_ok?: boolean | null
+          last_tested_at?: string | null
+          name: string
+          updated_at?: string
+          user_id: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          last_test_message?: string | null
+          last_test_ok?: boolean | null
+          last_tested_at?: string | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+          value?: string
+        }
+        Relationships: []
+      }
       videos_published: {
         Row: {
           created_at: string
