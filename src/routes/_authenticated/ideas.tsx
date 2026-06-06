@@ -194,13 +194,12 @@ function IdeasPage() {
                 ))}
               </div>
 
-              {idea.status !== "rejected" && (
-                <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => reject.mutate(idea.id)}>
-                    Reject
-                  </Button>
-                </div>
-              )}
+              <div className="flex gap-2">
+                {idea.status !== "rejected" && (
+                  <Button size="sm" variant="ghost" onClick={() => reject.mutate(idea.id)}>Reject</Button>
+                )}
+                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => del.mutate(idea.id)}>Delete</Button>
+              </div>
             </CardContent>
           </Card>
         ))}
