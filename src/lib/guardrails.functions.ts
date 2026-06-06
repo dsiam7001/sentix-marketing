@@ -77,7 +77,7 @@ export async function runGuardrailsCore(supabase: any, userId: string, scriptId:
             if (intended && actual) {
               const aw = new Set(actual.split(" "));
               const iw = intended.split(" ");
-              const matches = iw.filter((w) => aw.has(w)).length;
+              const matches = iw.filter((w: string) => aw.has(w)).length;
               transcript_match_pct = Math.round((matches / iw.length) * 100);
               if (transcript_match_pct < 60) flags.push(`Transcript match only ${transcript_match_pct}%`);
             }
