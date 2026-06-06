@@ -91,6 +91,48 @@ export type Database = {
         }
         Relationships: []
       }
+      autopilot_settings: {
+        Row: {
+          auto_approve: boolean
+          auto_publish_telegram: boolean
+          auto_render: boolean
+          created_at: string
+          daily_quota: number
+          enabled: boolean
+          paused_until: string | null
+          slot_config: Json
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_approve?: boolean
+          auto_publish_telegram?: boolean
+          auto_render?: boolean
+          created_at?: string
+          daily_quota?: number
+          enabled?: boolean
+          paused_until?: string | null
+          slot_config?: Json
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_approve?: boolean
+          auto_publish_telegram?: boolean
+          auto_render?: boolean
+          created_at?: string
+          daily_quota?: number
+          enabled?: boolean
+          paused_until?: string | null
+          slot_config?: Json
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       competitor_channels: {
         Row: {
           channel_name: string
@@ -127,6 +169,7 @@ export type Database = {
       content_ideas: {
         Row: {
           created_at: string
+          deleted_at: string | null
           for_date: string
           id: string
           pain_point: string | null
@@ -143,6 +186,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           for_date?: string
           id?: string
           pain_point?: string | null
@@ -159,6 +203,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           for_date?: string
           id?: string
           pain_point?: string | null
@@ -207,6 +252,39 @@ export type Database = {
           market_event?: string | null
           pulse_date?: string
           telegram_trends?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      diagnostic_runs: {
+        Row: {
+          completed_at: string | null
+          id: string
+          mode: string
+          started_at: string
+          status: string
+          steps: Json
+          summary: Json | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          mode?: string
+          started_at?: string
+          status?: string
+          steps?: Json
+          summary?: Json | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          mode?: string
+          started_at?: string
+          status?: string
+          steps?: Json
+          summary?: Json | null
           user_id?: string
         }
         Relationships: []
@@ -316,6 +394,57 @@ export type Database = {
         }
         Relationships: []
       }
+      guard_reports: {
+        Row: {
+          ai_video_score: number | null
+          ai_voice_score: number | null
+          audio_copyright_score: number | null
+          audio_match: Json | null
+          created_at: string
+          flags: Json
+          id: string
+          raw: Json | null
+          render_job_id: string | null
+          script_id: string | null
+          transcript_actual: string | null
+          transcript_match_pct: number | null
+          user_id: string
+          verdict: string
+        }
+        Insert: {
+          ai_video_score?: number | null
+          ai_voice_score?: number | null
+          audio_copyright_score?: number | null
+          audio_match?: Json | null
+          created_at?: string
+          flags?: Json
+          id?: string
+          raw?: Json | null
+          render_job_id?: string | null
+          script_id?: string | null
+          transcript_actual?: string | null
+          transcript_match_pct?: number | null
+          user_id: string
+          verdict?: string
+        }
+        Update: {
+          ai_video_score?: number | null
+          ai_voice_score?: number | null
+          audio_copyright_score?: number | null
+          audio_match?: Json | null
+          created_at?: string
+          flags?: Json
+          id?: string
+          raw?: Json | null
+          render_job_id?: string | null
+          script_id?: string | null
+          transcript_actual?: string | null
+          transcript_match_pct?: number | null
+          user_id?: string
+          verdict?: string
+        }
+        Relationships: []
+      }
       hooks_library: {
         Row: {
           category: string | null
@@ -349,6 +478,42 @@ export type Database = {
         }
         Relationships: []
       }
+      pipeline_runs: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          message: string | null
+          ref_id: string | null
+          slot: string | null
+          stage: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string | null
+          ref_id?: string | null
+          slot?: string | null
+          stage: string
+          status: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string | null
+          ref_id?: string | null
+          slot?: string | null
+          stage?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -374,6 +539,7 @@ export type Database = {
         Row: {
           audio_url: string | null
           created_at: string
+          deleted_at: string | null
           error: string | null
           finished_at: string | null
           github_run_id: string | null
@@ -388,6 +554,7 @@ export type Database = {
         Insert: {
           audio_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           error?: string | null
           finished_at?: string | null
           github_run_id?: string | null
@@ -402,6 +569,7 @@ export type Database = {
         Update: {
           audio_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           error?: string | null
           finished_at?: string | null
           github_run_id?: string | null
@@ -429,6 +597,7 @@ export type Database = {
           audio_url: string | null
           caption: string | null
           created_at: string
+          deleted_at: string | null
           duration_sec: number | null
           effects: Json | null
           final_score: number | null
@@ -459,6 +628,7 @@ export type Database = {
           audio_url?: string | null
           caption?: string | null
           created_at?: string
+          deleted_at?: string | null
           duration_sec?: number | null
           effects?: Json | null
           final_score?: number | null
@@ -489,6 +659,7 @@ export type Database = {
           audio_url?: string | null
           caption?: string | null
           created_at?: string
+          deleted_at?: string | null
           duration_sec?: number | null
           effects?: Json | null
           final_score?: number | null
