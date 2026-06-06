@@ -82,7 +82,7 @@ export const triggerRender = createServerFn({ method: "POST" })
       client_payload: {
         job_id: job.id,
         script_id: script.id,
-        callback_url: callbackUrl(),
+        callback_url: await callbackUrl(ctx.supabase, ctx.userId),
         signature: sig,
         title: script.title,
         full_script: script.full_script,
