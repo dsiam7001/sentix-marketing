@@ -85,6 +85,13 @@ function IdeasPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["ideas"] }),
   });
 
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("content_ideas").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+    },
+    onSuccess: () => { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["ideas"] }); },
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
