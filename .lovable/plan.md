@@ -1,215 +1,419 @@
-# Sentix AI 2.0 — Phase 2: Autonomous Engine (100% Free)
+# Sentix AI — Phase 3: Autonomous Pilot + Safety Net
 
-Goal: Strategist↔Critic dual-AI scripting → free asset sourcing (Pexels/Pixabay/Pollinations) → Edge-TTS Bengali voiceover → GitHub Actions Remotion rendering → Quantum Mission Control dashboard. **$0/month**.
+লক্ষ্য: Dual-AI ৯/১০ পাস করলে আপনার approval ছাড়াই পুরো pipeline নিজে নিজে চলবে — idea → script → assets → render → copyright/AI-detection check → Telegram delivery। আপনি যেকোনো সময় manual mode-এ ফিরতে পারবেন, যেকোনো কিছু delete/reject করতে পারবেন, এবং প্রতিটা ধাপের proof দেখতে পাবেন।
 
-## Architecture
+---
 
-┌─────────────────────── LOVABLE (THE BRAIN) ───────────────────────┐  
-│                                                                    │  
-│  Daily Pulse ─▶ Strategist AI ─▶ Script + Shot List               │  
-│                       ▲                  │                         │  
-│                       │ feedback (≤3)    ▼                         │  
-│                  Critic AI ◀── Score 0-10 (target ≥9)             │  
-│                                          │                         │  
-│                  approved/needs-review ──┤                         │  
-│                                          ▼                         │  
-│  Asset Engine: Pexels + Pixabay + Pollinations.ai                  │  
-│  Voiceover: Edge-TTS bn-BD (run in GitHub Action)                  │  
-│                                          │                         │  
-│  Quantum Mission Control HUD ◀───────────┤                         │  
-│                                          ▼                         │  
-│  YOU click "Render" ────▶ commit data.json to GitHub               │  
-└────────────────────────────────────────┬───────────────────────────┘  
-                                         │ repository_dispatch  
-                                         ▼  
-┌──────────────── GITHUB ACTIONS (THE MUSCLE) ──────────────────────┐  
-│  1. Read data.json (script, scenes, asset URLs, captions)         │  
-│  2. pip install edge-tts → generate bn-BD MP3 + word timestamps   │  
-│  3. Download Pexels/Pixabay clips → /assets                        │  
-│  4. bunx remotion render → MP4                                     │  
-│  5. Upload as GitHub Release artifact + send to Telegram bot       │  
-│  6. POST status back to Lovable webhook (/api/public/render-cb)   │  
-└────────────────────────────────────────────────────────────────────┘
+## ১. Autopilot Engine (time-aware auto-generation)
 
-## Build Steps
+**নতুন table:** `autopilot_settings` (per-user)
 
-### 1. Gemini Key Pool + Rotator
+- `enabled` (bool) — master switch
+- `auto_approve` (bool) — Dual-AI ≥৯ হলে human review skip
+- `auto_render` (bool) — approved হলে নিজে নিজে GitHub render trigger
+- `auto_publish_telegram` (bool) — render শেষে নিজে নিজে Telegram-এ পাঠাবে
+- `daily_quota` (int, default 4) — দিনে সর্বোচ্চ কতটা ভিডিও
+- `slot_config` (jsonb): সকাল/দুপুর/বিকাল/রাত slot, প্রতিটার জন্য preferred tone (logical / emotional / story / psychology / market-logic)
 
-- New table `gemini_keys` already exists — extend with `last_429_at`, `daily_calls`, `cooldown_until`
-- Server fn `getNextGeminiKey()`: round-robin, skip cooled-down keys, fallback to Lovable AI Gateway when all exhausted
-- Wrap all Gemini calls in `callGeminiWithRotation(prompt)` — catches 429 → marks key cooldown 1hr → retries with next key
-- Admin secrets: prompt user to add `GEMINI_KEY_1` … `GEMINI_KEY_10` (optional — works with Gateway alone if user skips)
-- UI: Settings page → "Gemini Key Pool" section showing key status (active/cooldown/exhausted) + add/remove
+**নতুন server route:** `/api/public/autopilot-tick` (HMAC-protected, pg_cron প্রতি ১৫ মিনিট hit করবে)
 
-### 2. Dual-AI Engine (Strategist ↔ Critic)
+1. বর্তমান slot detect (Asia/Dhaka timezone)
+2. ওই slot-এ আজ ভিডিও আছে কিনা check
+3. না থাকলে: Daily Pulse → Generate 5 ideas → প্রতিটার জন্য Dual-AI run → highest-scoring ৯+ approved script নাও
+4. `auto_render` on হলে → asset plan + GitHub dispatch
+5. `auto_publish_telegram` on হলে → render-callback এ পেলেই Telegram push (already wired)
+6. প্রতিটা ধাপ `pipeline_runs` table-এ log + Mission Control HUD-এ live দেখাবে
 
-New file `src/lib/dual-ai.functions.ts`:
+**নতুন page section:** `/control` → "Autopilot" card — সব toggle, slot grid (4×7), today's planned vs done, "Pause autopilot" big red button।
 
-- `strategistGenerate(pulse, styleMemory, hookLibrary)` → returns `{ script, shotList, hooks, rationale }`
-- `criticEvaluate(strategistOutput)` → returns `{ score, breakdown: {hook, bengali_authenticity, logic_clarity, cta_strength, identity_build}, feedback }`
-- `runDualAILoop(pulseId)`:
-  - Iter 1: strategist → critic
-  - If score ≥ 9 → save as `approved`, ready for render
-  - If 7.5 ≤ score < 9 → retry (max 3) with critic's feedback fed into strategist
-  - If after 3 retries still 7.5-9 → save as `needs_review` (shows in HUD)
-  - If < 7.5 after 3 retries → save as `rejected` with reason
-- New table `dual_ai_runs`: stores each iteration (strategist_output, critic_score, critic_feedback, iteration_n, final_status)
-- UI: Idea Lab card shows live dual-AI conversation (collapsible "AI Dialog")
+---
 
-### 3. Asset Sourcing Engine
+## ২. Manual override + bulk Delete/Reject
 
-New file `src/lib/assets.functions.ts`:
+প্রতিটা list page-এ (Ideas, Scripts, Renders) যোগ হবে:
 
-- `searchPexelsVideos(query, perPage)` — needs `PEXELS_API_KEY` secret (free, user signs up)
-- `searchPixabayVideos(query, perPage)` — needs `PIXABAY_API_KEY` secret (free)
-- `generatePollinationsImage(prompt)` — no key needed, direct URL: `https://image.pollinations.ai/prompt/{encoded}`
-- `pickAssetsForShotList(shotList)` → for each scene, fetch top 3 candidates, AI picks best match
-- New table `asset_cache`: `(query_hash, source, url, used_count)` — avoid re-fetching same queries
-- UI: Script Studio shows asset previews per scene with "swap" button
-- Vision AI Analysis: যদি ইউজার কোনো ছবি (প্রফিট স্ক্রিনশট বা চার্ট) আপলোড করে, তবে Gemini Vision API সেটি রিড করে লজিক জেনারেট করবে।
-- Site-Snapshot Engine: পিবেলে (Pexels) ট্রেডিং ভিডিও কম থাকলে, সিস্টেমটি Puppeteer ব্যবহার করে সরাসরি [https://sentixai4.lovable.app](https://sentixai4.lovable.app) থেকে রিয়েল-টাইম চার্ট মুভমেন্টের ৫ সেকেন্ডের ক্লিপ রেকর্ড করে ভিডিওতে ব্যবহার করবে।
-- Visual Mirroring: সব স্টক ভিডিওকে এআই অটোমেটিক "Horizontal Flip" এবং সামান্য "Color Shift" করবে যাতে এটি ইউনিক হয় এবং কোনো ডুপ্লিকেট কন্টেন্ট ক্লেইম না আসে।
+- Row checkbox + "Select all"
+- Bulk action bar: **Delete**, **Reject**, **Re-run Dual-AI**, **Force render**
+- Single-row action menu: View / Edit / Duplicate / Delete / Reject / Mark needs-review
+- "Trash" view যেখান থেকে ৩০ দিনের ভিতর restore করা যাবে (soft-delete `deleted_at` column)
+- Status filter chips: All / Approved / Needs Review / Rejected / Trash
 
-### 4. GitHub Integration + Remote Renderer
+Scripts/Renders-এও same pattern, plus "Cancel render" GitHub workflow cancel API call।
 
-**User must enable Lovable→GitHub integration first** (Plus menu → GitHub → Connect project).
+---
 
-- Prompt user to add secrets: `GITHUB_PAT` (with `repo` + `workflow` scope), `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `PEXELS_API_KEY`, `PIXABAY_API_KEY`
-- Create `remotion/` folder in project:
-  - `package.json`, `tsconfig.json`, `src/Root.tsx`, `src/MainVideo.tsx`
-  - Scene components: `Hook.tsx`, `ProblemReveal.tsx`, `LogicProof.tsx`, `CTA.tsx`
-  - Reads `public/data.json` (script + scene timings + asset URLs + captions SRT)
-  - Uses `@remotion/google-fonts/HindSiliguri` for Bengali text rendering
-- Create `.github/workflows/render.yml`:
-  - Trigger: `repository_dispatch` (event_type: `sentix-render`) with `client_payload` carrying script_id
-  - Steps:
-    1. checkout
-    2. Setup Node 22 + Python 3.11
-    3. `pip install edge-tts` → generate `audio.mp3` + `captions.json` (use `edge-tts --voice bn-BD-PradeepNeural --text "..." --write-media audio.mp3 --write-subtitles captions.vtt`)
-    4. Download Pexels/Pixabay clips from data.json into `remotion/public/assets/`
-    5. `cd remotion && bun install && bunx remotion render src/index.ts main /tmp/output.mp4`
-    6. Upload as GitHub Release artifact
-    7. POST MP4 to Telegram bot (sendVideo API)
-    8. POST callback to `https://project--{id}-dev.lovable.app/api/public/render-callback` with `{ script_id, status, video_url }`
-- Server fn `triggerRender(scriptId)`: POSTs to GitHub `repository_dispatch` API with script data + asset URLs
-- Public route `src/routes/api/public/render-callback.ts`: verifies HMAC, updates `scripts.render_status` and `scripts.video_url`
+## ৩. API Key Hub (one-click connect)
 
-### 5. Edge-TTS in GitHub Action
+`/settings` → "Integrations" tab redesign — প্রতিটা service-এর জন্য একটা card:
 
-- bn-BD-PradeepNeural (male, news anchor tone — fits Sentix authority voice)
-- bn-BD-NabanitaNeural (female alternative)
-- Captions VTT → parsed to word-level JSON for Remotion subtitle sync
-- Script `scripts/tts.py` in repo handles chunking >2000 chars + retry on Microsoft endpoint errors
 
-### 6. Quantum Mission Control HUD (new `/control` page)
+| Service                               | Field                | Purpose                                                          | Status    |
+| ------------------------------------- | -------------------- | ---------------------------------------------------------------- | --------- |
+| Gemini (multi-key pool)               | label + key          | Strategist/Critic                                                | ✅ already |
+| Pexels                                | API key              | Stock video                                                      | ✅         |
+| Pixabay                               | API key              | Stock video/image                                                | ✅         |
+| Pollinations                          | (no key)             | AI image                                                         | ✅         |
+| GitHub PAT                            | token + owner + repo | Render muscle                                                    | ✅         |
+| Telegram                              | bot token + chat id  | Delivery                                                         | ✅         |
+| **YouTube Data API**                  | OAuth / key          | Copyright pre-check via Content ID hints + auto-upload (Phase 4) | 🆕        |
+| **AssemblyAI** (free tier 5h/mo)      | API key              | Voice transcription verify + bad-word scan                       | 🆕        |
+| **Hive AI / Sightengine** (free tier) | API key              | AI-generated-content detection on final MP4                      | 🆕        |
+| **AudD / ACRCloud** (free 14-day)     | API key              | Music copyright fingerprint check                                | 🆕        |
+| **Unsplash**                          | Access key           | Extra free visuals                                               | 🆕        |
+| **DeepL Free**                        | API key              | Bengali grammar polish backup                                    | 🆕        |
+| **OpenRouter**                        | API key              | Backup LLM if Gemini pool exhausted                              | 🆕        |
 
-Realistic version of the 15 HUD widgets (only what we can actually measure):
 
-- **AI Pipeline Status**: live count of pending/strategist-running/critic-running/approved/rendering/done
-- **Dual-AI Dialog Stream**: latest 5 runs with score, iteration, status
-- **Gemini Key Pool Health**: 10 keys × status dots (green/yellow/red/cooldown timer)
-- **Render Queue**: GitHub Actions in-progress (poll via Actions API) + last 10 finished
-- **Asset Cache Hit Rate**: % of scenes using cached vs fresh-fetched assets
-- **Virality Score Trend**: line chart of last 30 AI scores vs actual views (from Performance Tracker)
-- **Calibration Delta**: avg (predicted_score - actual_normalized_views) → shows AI bias
-- **Style Memory Coverage**: % of last 10 scripts that matched user's voice samples
-- **Edge-TTS Status**: last 10 jobs success/fail
-- **Telegram Delivery**: last 10 video deliveries
-- **System Health**: Lovable AI Gateway quota %, GitHub Actions minutes used (free tier 2000/mo private)
-- **Today's Throughput**: pulses→ideas→scripts→approved→rendered funnel
-- **Hook Performance**: which hooks from library got highest actual views
-- **Manual Review Queue**: scripts marked `needs_review` (7.5≤score<9) requiring your decision
-- **Cost Tracker**: literal $0.00 with breakdown showing what *would* have cost on paid stack
-- Detection Evasion Score: ভিডিওটি এআই ডিটেকশন এড়ানোর জন্য কতটা প্রস্তুত তার একটি মিটার।
-- Est. Telegram Conversion: বর্তমান ভাইরাল ট্রেন্ড অনুযায়ী এই ভিডিওটি থেকে কতজন টেলিগ্রামে জয়েন করতে পারে তার একটি প্রেডিকশন।
-- API Key Lifespan: আপনার ১০টি জেমিনি কী-র মধ্যে কোনটি কতটুকু ব্যবহৃত হয়েছে তার লাইভ ব্যাটারি ইন্ডিকেটর।র।
+প্রতিটা card-এ: input field + "Save & Test" button → server fn যেটা actual API ping করে valid/invalid দেখাবে (green check / red X with reason)। সবগুলো `process.env` secret হিসেবে store হবে।
 
-Removed from original 15 (impossible without paid platform APIs):
+---
 
-- ❌ Shadowban Radar, Audience Retention Heatmap (real-time), Future View Predictor 30d, Engagement Velocity, Trust Score AI, Platform Sentiment Map, Global Trend Overlay → marked as "Phase 4 (requires paid platform APIs)" in HUD
+## ৪. Copyright + AI-Detection Guard (নতুন AI layer)
 
-Human-Masking: In the GitHub Action, implement metadata scrubbing and inject random iPhone 15 Pro tags + invisible noise for anti-detection.
+নতুন server fn `guardrails.functions.ts` — render-callback এর পরে, Telegram-এ পাঠানোর **আগে** চলবে:
 
-Vision Analysis: Integrate Gemini Vision to analyze user-uploaded profit/chart images for the script logic.
+**৪.১ Audio copyright check** — AudD API দিয়ে final MP4 থেকে audio fingerprint → known song match হলে flag।  
+**৪.২ AI-voice detection** — Hive AI / ElevenLabs classifier দিয়ে narration analyze → "AI synthetic" score > 0.7 হলে flag (Edge-TTS detect হয় কিনা দেখার জন্য)। Mitigation: pitch-shift + EQ pass already in ffmpeg step, plus optional RVC humanization (Phase 4)।  
+**৪.৩ AI-video detection** — Sightengine "AI-generated" model দিয়ে keyframe sample check।  
+**৪.৪ Transcript scan** — AssemblyAI দিয়ে actual narration transcribe → compare with intended SRT → mismatch / bad-word / brand-name leak flag।  
+**৪.৫ Visual copyright** — reverse image search keyframes via TinEye free tier (limited)।
 
-Asset Fallback: If Pexels lacks trading clips, use Puppeteer to take snapshots of sentixai4.xo.je charts.
+**Result table:** `guard_reports` (script_id, audio_score, ai_voice_score, ai_video_score, transcript_match%, flags jsonb, verdict: clear/warn/block)
 
-Critic Checklist: Add a 'Safe-Zone Audit' to ensure subtitles don't overlap with TikTok UI.
+- `clear` → Telegram push proceed
+- `warn` → Telegram push but with ⚠️ caption + Mission Control alert
+- `block` → halt, mark script `needs_review`, notify owner
 
-Cost Optimizer: Generate a low-res thumbnail preview before triggering the expensive GitHub Render to save minutes.
+Mission Control-এ নতুন widget: "Guard Lab" — last 20 videos-এর scoring grid।
 
-Key Pool: Show a 'Battery' style health indicator for the 10 Gemini keys in the HUD.
+---
 
-Ensure the flow remains $0 and fully automated once I click 'Approve'."
+## ৫. End-to-End Self-Test ("System Doctor")
 
-### 7. Approval Gate Flow
+`/control` → "Run Full Diagnostic" button → একটা throwaway test pipeline চালাবে যেটা প্রমাণসহ report দিবে:
 
-Idea → Dual-AI runs → if approved: shows "Render This" button → opens preview (script + assets + voiceover preview via browser TTS for quick check) → user clicks "Send to GitHub" → status updates live via callback → MP4 link arrives in Telegram + dashboard.
 
-### 8. Schema Additions
+| Step | Check                                   | Proof                               |
+| ---- | --------------------------------------- | ----------------------------------- |
+| 1    | Supabase reachable, all 16 tables exist | row count                           |
+| 2    | Gemini key pool — প্রতিটা key ping      | per-key latency + status            |
+| 3    | Lovable AI Gateway fallback             | sample completion                   |
+| 4    | Pexels/Pixabay/Pollinations             | 1 search per service                |
+| 5    | Dual-AI loop — test topic ("BTC RSI")   | strategist+critic JSON              |
+| 6    | GitHub dispatch                         | workflow run URL                    |
+| 7    | Render workflow status                  | live job status poll                |
+| 8    | TTS audio generated                     | mp3 size + duration                 |
+| 9    | Guardrail APIs (AudD/Hive/AssemblyAI)   | per-API ping                        |
+| 10   | Telegram bot                            | test message delivered + message_id |
+| 11   | Render callback HMAC                    | round-trip verify                   |
 
-New tables:
 
-- `dual_ai_runs` (script_id, iteration, role, content, score, feedback, created_at)
-- `asset_cache` (query_hash unique, source, url, metadata jsonb, used_count, last_used)
-- `render_jobs` (script_id, github_run_id, status, video_url, error, started_at, finished_at)
+Report saved as `diagnostic_runs` row + downloadable JSON + on-screen status board (green/yellow/red per row with click-to-see-raw-response)। ভিডিও সত্যি Telegram-এ গেছে তার প্রমাণ হিসেবে Telegram API থেকে `message_id` ফেরত আসবে।
 
-Extend `scripts`: add `render_status`, `video_url`, `audio_url`, `needs_review_reason`, `final_score`, `iterations_used`.
+---
 
-Extend `gemini_keys`: add `cooldown_until`, `daily_calls`, `total_calls`, `last_429_at`.
+## ৬. Known issues + fixes (current codebase audit)
 
-All with RLS + GRANTs per project conventions.
 
-9.Metadata Injector: ভিডিও রেন্ডার হওয়ার পর পাইথন স্ক্রিপ্টটি ভিডিওর মেটাডেটা থেকে 'Remotion' বা 'FFmpeg' এর নাম মুছে দিয়ে iPhone 15 Pro / Samsung S24 এর ক্যামেরা ডাটা এবং একটি র্যান্ডম বাংলাদেশি জিপিএস লোকেশন ইনজেক্ট করবে।
+| Issue                                                                        | Impact                           | Fix in this plan                                       |
+| ---------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------ |
+| Render callback URL hardcoded to one preview domain in `render.functions.ts` | Published site callback fails    | env var `PUBLIC_BASE_URL` + fallback to request origin |
+| No retry if GitHub dispatch returns 422 (workflow file missing)              | Silent fail                      | pre-flight check workflow exists, surface error in UI  |
+| `dual_ai_runs` grows unbounded                                               | Slow queries after weeks         | nightly cleanup keeping last 500                       |
+| No idempotency on render-callback                                            | Duplicate Telegram push possible | unique `(job_id, status)` constraint                   |
+| Autopilot could double-fire on overlapping cron ticks                        | Duplicate videos                 | advisory lock per slot                                 |
+| Asset cache never expires                                                    | Stale Pexels links (24h signed)  | TTL column + refresh on miss                           |
+| Settings page shows secrets exist but can't test them                        | User can't verify                | "Test" button per integration (covered in §3)          |
+| No timezone handling — slots assume UTC                                      | Bangladesh users get wrong slot  | store `Asia/Dhaka`, convert in autopilot tick          |
 
-Audio Frequency Jitter: এআই ভয়েসের পিচে খুব সূক্ষ্ম (০.১%) র্যান্ডম পরিবর্তন আনবে যাতে প্ল্যাটফর্মের এআই ডিটেক্টর একে রোবট হিসেবে চিহ্নিত করতে না পারে।
 
-Frame Dithering: ভিডিওর প্রতিটি ফ্রেমে ১% অদৃশ্য নয়েজ (Invisible noise) যোগ করা হবে যা ইউনিক ডিজিটাল সিগনেচার তৈরি করবে।
+---
 
-10.Chek list dual talk ai 
+## ৭. Build order
 
-Overlay Guard: ক্রিটিক এআই চেক করবে সাবটাইটেল কি টিকটকের লাইক/কমেন্ট বাটনের নিচে চলে যাচ্ছে কি না। যদি যায়, তবে সে স্ট্র্যাটেজিস্টকে পজিশন বদলানোর অর্ডার দেবে।
+1. Schema migration (autopilot_settings, guard_reports, diagnostic_runs, pipeline_runs, deleted_at columns, idempotency constraint)
+2. Integrations Hub redesign + per-service "Save & Test" server fns
+3. Bulk delete/reject + Trash view across Ideas/Scripts/Renders
+4. Autopilot engine + `/api/public/autopilot-tick` + pg_cron schedule
+5. Guardrails layer + Guard Lab widget
+6. System Doctor diagnostic + report UI
+7. Render callback hardening + cleanup jobs
 
-Authority Tone Check: ভিডিওর টোন কি "VIP Seller" এর মতো লাগছে? যদি লাগে, তবে এআই সেটিকে বদলে "Logic-Based Educator" টোনে নিয়ে আসবে।
+৪. বাস্তবসম্মত সমস্যা ও বিকল্প সমাধান (Problems & Solutions)
 
-## Realistic Limits (called out in HUD)
+সমস্যা (Problem)	সমাধান ও বিকল্প উপায় (Advanced Solution)
 
-- GitHub Actions free tier: **2000 min/mo for private repos, unlimited for public**. ~3 min/render = ~666 videos/mo (private) or unlimited (public).
-- Edge-TTS: Microsoft endpoint, no official quota but heavy abuse can rate-limit. Mitigation: max 10 renders/hour throttle.
-- Pexels: 200 req/hr free → asset_cache handles repeats.
-- Pixabay: 100 req/min free.
-- Pollinations.ai: no key, occasional rate-limit, watermark-free.
-- Gemini free tier (per key): ~15 req/min, 1500/day. With 10 keys = 15,000/day → plenty.
-- Critic strict mode (9/10 + 3 retry): expect ~30-40% scripts hitting `needs_review` initially. Calibration improves over weeks as Style Memory + Performance feedback loop tunes prompts.
+Infinite Loop: এআই যদি ৯/১০ স্কোর না পায় বা কপিরাইট চেক ফেইল করে তবে সিস্টেম আটকে যেতে পারে।	Solution: 'Safe-Mode Fallback'. যদি ৩ বার ট্রাই করে ব্যর্থ হয়, তবে এআই একটি 'Verified Standard Template' ব্যবহার করবে যা আগে থেকেই সেফ হিসেবে প্রমাণিত।
 
-## What's NOT in Phase 2 (deferred)
+Server Overload: অটোমেটিক অনেক ভিডিও একসাথে রেন্ডার হলে গিটহাব লিমিট দিতে পারে।	Solution: 'Render Queue'. একটি ভিডিও শেষ হওয়ার পর আরেকটি শুরু হবে। মনিটরে আপনি 'In Queue' স্ট্যাটাস দেখবেন।
 
-- Auto-publish to TikTok/IG/FB/YT — manual upload (ToS + API restriction reality)
-- Shadowban detection / metadata washing — account safety risk
-- Real-time platform analytics — manual entry via Performance Tracker
-- Runway/Suno/Pika AI video gen — paid, weak for trading content
-- Multi-agent beyond 2 (Strategist/Critic) — over-engineering for single user
+Asset Mismatch: অটো-পাইলটে এআই অনেক সময় ভুল ছবি নিতে পারে।	Solution: 'Visual Validation AI'. এটি চেক করবে স্ক্রিপ্টে যদি "Loss" এর কথা থাকে তবে ছবি যেন "Profit" এর না হয়।
 
-## Build Order
+৫. ডিজিটাল মনিটর (The Verification Center)
 
-1. Schema migration (gemini_keys extend, dual_ai_runs, asset_cache, render_jobs, scripts extend)
-2. Gemini rotator + Settings UI for key pool
-3. Asset engine (Pexels/Pixabay/Pollinations) + Settings UI for those API keys
-4. Dual-AI engine + Idea Lab integration
-5. Remotion project scaffold in `remotion/` folder + sample data.json
-6. GitHub Actions workflow `.github/workflows/render.yml` + Python TTS script
-7. `triggerRender` server fn + render-callback public route
-8. Quantum Mission Control `/control` page with all realistic widgets
-9. Approval gate UI on Script Studio
-10. Telegram delivery integration
-11. সমস্যা, সমাধান ও বাস্তবসম্মত বিকল্প (Risk & Mitigation)
-12. সম্ভাব্য সমস্যা	বিকল্প সমাধান (The "Add-on" logic)
-13. GitHub Actions এর ২০০০ মিনিট শেষ হয়ে যাওয়া:	সমাধান: ভিডিও রেন্ডার করার আগে একটি ১ সেকেন্ডের "Low-Res Preview" (Low quality image summary) তৈরি করবে যা আপনি আগে চেক করবেন। সব ঠিক থাকলে তবেই আসল রেন্ডার হবে। এতে ফালতু মিনিট খরচ হবে না।
-14. Edge-TTS এর রোবোটিক টোন:	সমাধান: পাইথন স্ক্রিপ্টে --pitch এবং --rate প্যারামিটারগুলো র্যান্ডমাইজ করা হবে। এটি একেক সময় একেক টোনে কথা বলবে, যা হিউম্যান ডিটেকশন এড়াতে সাহায্য করবে।
-15. স্টক ভিডিওর অভাব:	সমাধান: Lovable-কে বলবেন Pollinations.ai ব্যবহার করে "Abstract Cyberpunk Trading Backgrounds" তৈরি করতে, যা দেখতে অনেক বেশি প্রফেশনাল এবং সবসময় ইউনিক।
+আপনার /control পেজে এখন একটি "System Pulse" সেকশন থাকবে:
 
-## Secrets to add (after plan approval)
+Status Indicators: প্রতিটি কানেকশন (GitHub, Telegram, Gemini) কি ঠিক আছে? সবুজ মানে ঠিক আছে।
 
-`GEMINI_KEY_1`...`GEMINI_KEY_10` (optional), `PEXELS_API_KEY`, `PIXABAY_API_KEY`, `GITHUB_PAT`, `GITHUB_REPO_OWNER`, `GITHUB_REPO_NAME`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `RENDER_CALLBACK_SECRET` (HMAC for callback verification).
+Auto/Manual Toggle: আপনি এক ক্লিকে পুরো সিস্টেমকে অটো থেকে ম্যানুয়াল মুডে নিতে পারবেন।
 
-User must also: connect Lovable→GitHub integration manually before step 5.
+Delete/Reject Button: যদি কোনো ভিডিও বা স্ক্রিপ্ট আপনার পছন্দ না হয়, এক ক্লিকে সেটি গিটহাব এবং ডাটাবেস থেকে ডিলিট করতে পারবেন।
+
+Audit Logs: প্রতিটি ভিডিও কেন তৈরি হলো এবং কপিরাইট চেক কীভাবে পাশ করল তার ছোট রিপোর
+
+## 🌌 SENTIX OVERLORD: THE AUTONOMOUS MASTERMIND (GRAND BLUEPRINT)
+
+
+
+## ১. কোর ওভারলর্ড লজিক (The Godfather Synapse)
+
+
+
+## সিস্টেমটি কেবল কাজ করবে না, এটি পুরো ইকোসিস্টেমের Orchestrator হিসেবে কাজ করবে।
+
+## এর প্রধান কাজ হলো আপনার "Single Click" পাওয়ার আগে সবকিছু ১০০% নির্ভুলভাবে
+
+## প্রস্তুত রাখা।
+
+
+
+## সমস্যা ও সমাধান (Problem-Solution Matrix):
+
+
+
+##   - সমস্যা ১: এআই লজিক লুপ (Logic Stuck): স্ট্র্যাটেজিস্ট ও ক্রিটিক এআই যদি ৯/১০
+
+##     স্কোর নিয়ে বারবার রিজেক্ট করতে থাকে।
+
+##       - সমাধান (The Arbiter): ৩বার প্রচেষ্টার পর মাস্টারমাইন্ড নিজে 'বিচারক'
+
+##         হিসেবে বসবে। সে সবচাইতে বেশি স্কোর পাওয়া সংস্করণটি বেছে নিয়ে
+
+##         সেটির দুর্বল জায়গায় নিজের থেকে ইনস্ট্রাকশন দিয়ে ফিক্স করবে।
+
+##   - সমস্যা ২: সাইলেন্ট রেন্ডার ফেইলিওর (Silent Failure): গিটহাব বলছে 'Success',
+
+##     কিন্তু ভিডিও ফাইলটি করাপ্টেড বা কালো।
+
+##       - সমাধান (Verification Layer): ভিডিও তৈরির পর এআই একটি 'Visual Audit'
+
+##         করবে। সে ফাইলের সাইজ এবং মেটাডেটা চেক করবে। যদি ফাইল সাইজ
+
+##         অস্বাভাবিক ছোট হয়, তবে ইউজারকে না জানিয়েই অটো-রিমেক করবে।
+
+##   - সমস্যা ৩: এসেট শর্টেজ (Asset Scarcity): পিক্সেলস বা পিক্সাবে-তে যদি
+
+##     নির্দিষ্ট কোনো চার্ট ভিডিও না পাওয়া যায়।
+
+##       - সমাধান (Recursive Sourcing): প্রথমে স্টক এপিআই চেক করবে ➔ না পেলে
+
+##         Puppeteer দিয়ে সাইটের চার্ট ক্যাপচার করবে ➔ সেটিও না হলে Pollinations.ai
+
+##         দিয়ে এআই ইমেজ জেনারেট করবে।
+
+
+
+## ২. ১০০ গুণ শক্তিশালী ৫টি নতুন লেয়ার (100x Advanced Layers)
+
+
+
+## ১. Layer: Meta-DNA Scrambler: ভিডিওর প্রতিটি ফ্রেমের ভেতরে অদৃশ্য নয়েজ এবং
+
+## ডাইনামিক ফ্রেম-রেট যোগ করা হবে। এটি ভিডিওর ডিজিটাল ডিএনএ এমনভাবে
+
+## বদলে দেবে যে সোশ্যাল মিডিয়া এলগরিদম একে ১০০% হিউম্যান কন্টেন্ট মনে করবে।
+
+## ২. Layer: Jitter-Sync Audio: Edge-TTS এর ভয়েসের ওপর 'Pitch Shifting' এবং 'Time
+
+## Stretching' করা হবে যাতে রোবোটিক একঘেয়েমি কেটে যায়। ৩. Layer: Trend Hijacker:
+
+## এআই প্রতিদিন ভাইরাল হওয়া ১০০০টি মিউজিক ট্র্যাক স্ক্যান করবে এবং আপনার
+
+## ভিডিওর ব্যাকগ্রাউন্ডে সেই মিউজিকের একটি ৩-সেকেন্ডের হুক লুপ হিসেবে
+
+## চালাবে। ৪. Layer: Smart Queue Management: যদি আপনি ১০টি ভিডিও একসাথে
+
+## এপ্রুভ করেন, মাস্টারমাইন্ড সেগুলোকে গিটহাবে সিরিয়াল অনুযায়ী পাঠাবে যাতে
+
+## সার্ভার জ্যাম না হয়। ৫. Layer: Feedback Loop Learning: গত সপ্তাহে কোন ভিডিওতে
+
+## সবচাইতে বেশি ভিউ এসেছে, সেই ডাটা রিড করে এআই পরের সপ্তাহের ভিডিওর হুক
+
+## অটো-আপডেট করবে।
+
+
+
+## ৩. দ্য মাস্টারমাইন্ড প্রম্পট (The Mega Prompt for Lovable AI)
+
+
+
+## Lovable AI-কে নিচের এই প্রম্পটটি দিন (এটি অত্যন্ত ডিটেইলড):
+
+
+
+## "SYSTEM ARCHITECTURE: SENTIX OVERLORD v2.0
+
+
+
+## CORE OBJECTIVE: Build a fully autonomous, self-healing, and institutional-grade
+
+## video marketing engine. The system must operate as a 'Mastermind' that manages
+
+## two existing sub-apps (Trading Quant & Video Factory).
+
+
+
+## 1. THE SINGLE-CLICK WORKFLOW:
+
+
+
+##   - The Mastermind must prepare 'Ready-to-Execute' packages containing validated
+
+##     scripts (Score >= 9.0), planned assets, and copyright-checked audio.
+
+##   - Implement a single 'EXECUTE' button in the HUD. Once clicked, it must
+
+##     trigger a sequential chain: Metadata Washing -> Render Request -> Policy
+
+##     Audit -> Telegram Dispatch.
+
+
+
+## 2. SELF-HEALING & ENFORCEMENT:
+
+
+
+##   - Implement 'The Arbiter' logic: If the Strategist/Critic loop fails 3 times,
+
+##     the Mastermind forces a resolution by merging the best versions.
+
+##   - API Failover: Automatically rotate through the pool of 10 Gemini Keys. If
+
+##     all hit 429 errors, switch to a fallback 'Emergency Prompt' via Lovable
+
+##     Gateway.
+
+##   - Post-Render Audit: After GitHub Actions finishes, use a webhook to verify
+
+##     file integrity. If the video is faulty, re-trigger the render automatically
+
+##     using alternative visual assets.
+
+
+
+## 3. HUMAN-MASKING & PROTECTION:
+
+
+
+##   - Inject 'Spectral Jitter' into Edge-TTS audio to bypass AI voice detection.
+
+##   - Implement 'Metadata Injection': Every video must have EXIF data mimicking
+
+##     high-end devices (iPhone/Samsung) and localized GPS coordinates.
+
+##   - Dynamic Watermarking: Apply a transparent, non-detectable digital signature
+
+##     to protect against content theft.
+
+
+
+## 4. DIGITAL MISSION CONTROL (HUD):
+
+
+
+##   - Create a real-time 'Nerve System' UI. Left panel for Trading Engine health,
+
+##     Right panel for Video Pipeline, Center for Overlord Decisions.
+
+##   - Include a 'Manual Override' toggle to switch from 'Full-Auto' back to
+
+##     'Assisted-Manual' mode.
+
+##   - Display 'API Battery' levels and 'Render Queue' live progress using
+
+##     WebSockets.
+
+
+
+## 5. ASSET RECURSION:
+
+
+
+##   - If Pexels/Pixabay fails to provide relevant trading visuals, use Puppeteer
+
+##     to capture live snapshots from 'sentixai4.xo.je' or call Pollinations.ai for
+
+##     generative art.
+
+
+
+## 6. FAIL-SAFE REASONS & SOLUTIONS:
+
+
+
+##   - Problem: Shadowban risk. Solution: Randomize frame rates and apply a subtle
+
+##     film-grain filter.
+
+##   - Problem: Subtitle overlap. Solution: Implement 'Safe-Zone UI Awareness' to
+
+##     keep text within TikTok/IG safe areas.
+
+
+
+## BUILD INSTRUCTIONS: Use React 19, Supabase Realtime, and Framer Motion for the
+
+## UI. Use GitHub Actions and FFmpeg for the Muscle. This system must be 100x more
+
+## efficient than any manual marketing team. Proceed with the implementation of the
+
+## 'Sentix Overlord' mastermind logic now."
+
+
+
+## ৪. বাস্তব বিশ্লেষণ ও মালিকের জন্য চেক-লিস্ট (Executive Summary)
+
+
+
+## কেন এই সিস্টেমটি গড-ফাদার হবে?
+
+
+
+##   - এটি শুধু কাজ করে না, এটি কাজ আদায় করে নেয়।
+
+##   - আপনার হস্তক্ষেপ ছাড়া এটি নিজেকে উন্নত (Self-Improvement) করতে পারে।
+
+##   - এটি সোশ্যাল মিডিয়া প্ল্যাটফর্মের সিকিউরিটি গাইডলাইনগুলো ভেঙে আপনার
+
+##     ব্র্যান্ডকে লুকিয়ে ভাইরাল করতে জানে।
+
+
+
+## সীমাবদ্ধতা ও বিকল্প (The Reality Check):
+
+
+
+##   - সীমা: GitHub Actions-এর ফ্রি লিমিট মাসে ২০০০ মিনিট।
+
+##   - সমাধান: মাস্টারমাইন্ড শুধু সেই ভিডিওগুলোই রেন্ডার করবে যা ৯/১০ স্কোর পেয়েছে।
+
+##     এতে কোনো ফালতু মিনিট খরচ হবে না।
+
+##   - সীমা: এআই মাঝে মাঝে ভুল লজিক দিতে পারে।
+
+##   - সমাধান: আপনি যেহেতু 'অ্যাপ্রুভ' বাটনে ক্লিক করবেন, তাই শেষ ক্ষমতা আপনার
+
+##     
+
+## Technical section
+
+- **New secrets needed** (only the ones you choose to enable): `YOUTUBE_API_KEY`, `ASSEMBLYAI_API_KEY`, `HIVE_API_KEY` or `SIGHTENGINE_USER`+`SIGHTENGINE_SECRET`, `AUDD_API_KEY`, `UNSPLASH_ACCESS_KEY`, `DEEPL_API_KEY`, `OPENROUTER_API_KEY`, `AUTOPILOT_TICK_SECRET`, `PUBLIC_BASE_URL`। প্রতিটা optional — না দিলে ওই feature gracefully disabled।
+- **pg_cron** Supabase extension enable → `select cron.schedule('autopilot', '*/15 * * * *', $$ select net.http_post(...) $$)`।
+- **Soft delete:** `deleted_at timestamptz`; RLS policies updated to filter; nightly hard-delete job >৩০ দিন।
+- **Guard Lab** server fns lazy-load each API key with `await import` so missing key = skip that check (not crash)।
+- **Autopilot advisory lock:** `pg_try_advisory_xact_lock(hashtext('autopilot:'||slot))` করে race condition prevent।
+- **System Doctor** — পুরো test cycle ৪ মিনিট (real GitHub render included); short-mode (৩০s) skip-render version-ও থাকবে।
+
+---
+
+জানান approve করলে আমি ধাপে ধাপে implement করা শুরু করব। কোনো section বাদ দিতে / আগে চান, বলুন।
