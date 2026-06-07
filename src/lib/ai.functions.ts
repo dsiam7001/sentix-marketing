@@ -182,7 +182,7 @@ export const generateIdeas = createServerFn({ method: "POST" })
         .eq("id", data.pulseId)
         .maybeSingle();
       if (pulse) {
-        pulseContext = `\nDaily Pulse:\n- Telegram trends: ${pulse.telegram_trends ?? "—"}\n- Competitor viral: ${pulse.competitor_viral ?? "—"}\n- Market event: ${pulse.market_event ?? "—"}`;
+        pulseContext = `\nDaily Pulse:\n- Trending topic: ${pulse.telegram_trends ?? "—"}\n- Competitor viral: ${pulse.competitor_viral ?? "—"}\n- Market event: ${pulse.market_event ?? "—"}`;
       }
     }
 
@@ -515,7 +515,7 @@ export const generateDailyStrategy = createServerFn({ method: "POST" })
     if (!pulse) throw new Error("Pulse not found");
 
     const system = `তুমি Sentix AI-র daily content strategist। নিচের Daily Pulse input থেকে আজকের content strategy লেখো (4-6 bullet points, বাংলায়)। কোন angle, কোন time slot, কোন pain point target করা উচিত — সংক্ষেপে বলো।`;
-    const user = `Telegram trends: ${pulse.telegram_trends ?? "—"}\nCompetitor viral: ${pulse.competitor_viral ?? "—"}\nMarket event: ${pulse.market_event ?? "—"}`;
+    const user = `Trending topic: ${pulse.telegram_trends ?? "—"}\nCompetitor viral: ${pulse.competitor_viral ?? "—"}\nMarket event: ${pulse.market_event ?? "—"}`;
 
     const strategy = await callAI({ system, user });
     await ctx.supabase

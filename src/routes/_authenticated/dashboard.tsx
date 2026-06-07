@@ -168,7 +168,7 @@ function Dashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <PulseField label="Telegram-এ আজ কী trending?" value={telegram} onChange={setTelegram} placeholder="যেমন: 'GBPJPY দিয়ে সবাই VIP signal খাচ্ছে', 'OTC weekend trap'..." />
+          <PulseField label="আজ YouTube / Facebook / Instagram / TikTok-এ কী trending? (অথবা যেকোনো topic)" value={telegram} onChange={setTelegram} placeholder="যেমন: 'GBPJPY VIP signal', 'OTC weekend trap', 'candlestick pattern explained' — যেকোনো বিষয় লিখুন" />
           <PulseField label="Competitor কেউ viral হয়েছে?" value={competitor} onChange={setCompetitor} placeholder="URL paste বা ১ লাইনে describe করুন" />
           <PulseField label="আজ market-এ বিশেষ কিছু?" value={market} onChange={setMarket} placeholder="NFP, Eid, USD news, crypto crash..." />
 
