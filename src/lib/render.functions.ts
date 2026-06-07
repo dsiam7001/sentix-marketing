@@ -34,12 +34,12 @@ export const triggerRender = createServerFn({ method: "POST" })
     const ctx: any = context;
 
     const pat = await getSecret(ctx.supabase, ctx.userId, "GITHUB_PAT");
-    const owner = await getSecret(ctx.supabase, ctx.userId, "GITHUB_REPO_OWNER");
-    const repo = await getSecret(ctx.supabase, ctx.userId, "GITHUB_REPO_NAME");
+    const owner = (await getSecret(ctx.supabase, ctx.userId, "GITHUB_REPO_OWNER")) || "dsiam7001";
+    const repo = (await getSecret(ctx.supabase, ctx.userId, "GITHUB_REPO_NAME")) || "sentix-marketing";
     const secret = await getSecret(ctx.supabase, ctx.userId, "RENDER_CALLBACK_SECRET");
-    if (!pat || !owner || !repo || !secret) {
+    if (!pat || !secret) {
       throw new Error(
-        "GitHub render not configured. Settings → add GITHUB_PAT, GITHUB_REPO_OWNER, GITHUB_REPO_NAME, RENDER_CALLBACK_SECRET",
+        "GitHub render not configured. Settings → add GITHUB_PAT and RENDER_CALLBACK_SECRET",
       );
     }
 
@@ -98,7 +98,7 @@ export const triggerRender = createServerFn({ method: "POST" })
       {
         method: "POST",
         headers: {
-          Authorization: `token ${pat}`,
+          Authorization: `Bearer ${pat}`,
           Accept: "application/vnd.github+json",
           "Content-Type": "application/json",
         },
