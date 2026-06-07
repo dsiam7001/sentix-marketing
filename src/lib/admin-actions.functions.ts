@@ -65,13 +65,13 @@ export const cancelRender = createServerFn({ method: "POST" })
     const { data: job } = await ctx.supabase.from("render_jobs").select("*").eq("id", data.jobId).maybeSingle();
     if (!job) throw new Error("Job not found");
     const pat = await getUserSecret(ctx.supabase, ctx.userId, "GITHUB_PAT");
-    const owner = await getUserSecret(ctx.supabase, ctx.userId, "GITHUB_REPO_OWNER");
-    const repo = await getUserSecret(ctx.supabase, ctx.userId, "GITHUB_REPO_NAME");
-    if (pat && owner && repo && job.github_run_id) {
+    const owner = (await getUserSecret(ctx.supabase, ctx.userId, "GITHUB_REPO_OWNER")) || "dsiam7001";
+    const repo = (await getUserSecret(ctx.supabase, ctx.userId, "GITHUB_REPO_NAME")) || "sentix-marketing";
+    if (pat && job.github_run_id) {
       try {
         await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs/${job.github_run_id}/cancel`, {
           method: "POST",
-          headers: { Authorization: `token ${pat}`, Accept: "application/vnd.github+json" },
+          headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json" },
         });
       } catch { /* ignore */ }
     }

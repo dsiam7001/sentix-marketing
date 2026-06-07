@@ -167,11 +167,11 @@ export async function triggerRenderInternal(supabase: any, userId: string, scrip
   const { getUserSecret } = await import("./secrets.server");
   const { createHmac } = await import("crypto");
   const pat = await getUserSecret(supabase, userId, "GITHUB_PAT");
-  const owner = await getUserSecret(supabase, userId, "GITHUB_REPO_OWNER");
-  const repo = await getUserSecret(supabase, userId, "GITHUB_REPO_NAME");
+  const owner = (await getUserSecret(supabase, userId, "GITHUB_REPO_OWNER")) || "dsiam7001";
+  const repo = (await getUserSecret(supabase, userId, "GITHUB_REPO_NAME")) || "sentix-marketing";
   const secret = await getUserSecret(supabase, userId, "RENDER_CALLBACK_SECRET");
   const base = await getUserSecret(supabase, userId, "PUBLIC_BASE_URL");
-  if (!pat || !owner || !repo || !secret) throw new Error("GitHub render not configured");
+  if (!pat || !secret) throw new Error("GitHub render not configured (need GITHUB_PAT + RENDER_CALLBACK_SECRET)");
   const cbUrl = `${(base ?? "https://project--490123ce-11f1-405e-91bd-0d2ba0200065.lovable.app").replace(/\/$/, "")}/api/public/render-callback`;
 
   const { data: script } = await supabase.from("scripts").select("*").eq("id", scriptId).single();
@@ -184,7 +184,7 @@ export async function triggerRenderInternal(supabase: any, userId: string, scrip
 
   const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/dispatches`, {
     method: "POST",
-    headers: { Authorization: `token ${pat}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
     body: JSON.stringify({
       event_type: "sentix-render",
       client_payload: {

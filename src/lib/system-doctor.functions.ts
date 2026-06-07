@@ -65,13 +65,20 @@ export const runSystemDoctor = createServerFn({ method: "POST" })
     // 4-6. Asset APIs
     for (const [name, label, fn] of [
       ["PEXELS_API_KEY", "Pexels", async (v: string) => fetch("https://api.pexels.com/videos/search?query=trading&per_page=1", { headers: { Authorization: v } })],
-      ["PIXABAY_API_KEY", "Pixabay", async (v: string) => fetch(`https://pixabay.com/api/videos/?key=${v}&q=trading&per_page=1`)],
+      ["PIXABAY_VIDEO_API_KEY", "Pixabay (video)", async (v: string) => fetch(`https://pixabay.com/api/videos/?key=${v}&q=trading&per_page=3&safesearch=true`)],
+      ["PIXABAY_IMAGE_API_KEY", "Pixabay (image)", async (v: string) => fetch(`https://pixabay.com/api/?key=${v}&q=trading&per_page=3&safesearch=true&image_type=photo`)],
     ] as const) {
       const v = await get(name);
-      if (!v) push({ id: name, label, status: "skip", proof: "no key" });
+      if (!v) push({ id: name, label, status: "skip", proof: "no key (optional)" });
       else {
-        try { const r = await fn(v); push({ id: name, label, status: r.ok ? "ok" : "fail", proof: `HTTP ${r.status}` }); }
-        catch (e: any) { push({ id: name, label, status: "fail", proof: e?.message }); }
+        try {
+          const r = await fn(v);
+          if (r.ok) push({ id: name, label, status: "ok", proof: `HTTP ${r.status}` });
+          else {
+            const body = await r.text().catch(() => "");
+            push({ id: name, label, status: "fail", proof: `HTTP ${r.status} — ${body.slice(0, 120)}` });
+          }
+        } catch (e: any) { push({ id: name, label, status: "fail", proof: e?.message }); }
       }
     }
 
@@ -81,23 +88,38 @@ export const runSystemDoctor = createServerFn({ method: "POST" })
       push({ id: "pollinations", label: "Pollinations.ai", status: r.ok ? "ok" : "warn", proof: `HTTP ${r.status}` });
     } catch (e: any) { push({ id: "pollinations", label: "Pollinations.ai", status: "warn", proof: e?.message }); }
 
-    // 8. GitHub repo reachable
+    // 8. GitHub repo + workflow (with sensible defaults)
     const pat = await get("GITHUB_PAT");
-    const owner = await get("GITHUB_REPO_OWNER");
-    const repo = await get("GITHUB_REPO_NAME");
-    if (pat && owner && repo) {
+    const owner = (await get("GITHUB_REPO_OWNER")) || "dsiam7001";
+    const repo = (await get("GITHUB_REPO_NAME")) || "sentix-marketing";
+    if (pat) {
       try {
+        const u = await fetch("https://api.github.com/user", {
+          headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json" },
+        });
+        if (!u.ok) {
+          const b = await u.text();
+          push({ id: "github_pat", label: "GitHub PAT", status: "fail", proof: `HTTP ${u.status} — ${b.slice(0, 100)}` });
+        } else {
+          const ju: any = await u.json();
+          push({ id: "github_pat", label: "GitHub PAT", status: "ok", proof: `as ${ju.login}` });
+        }
         const r = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
-          headers: { Authorization: `token ${pat}`, Accept: "application/vnd.github+json" },
+          headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json" },
         });
-        push({ id: "github", label: "GitHub repo + PAT", status: r.ok ? "ok" : "fail", proof: `HTTP ${r.status}` });
-        // Check workflow file
+        if (r.ok) {
+          const jr: any = await r.json();
+          push({ id: "github_repo", label: `GitHub repo ${owner}/${repo}`, status: "ok", proof: `${jr.private ? "private" : "public"} · branch=${jr.default_branch}` });
+        } else {
+          const b = await r.text();
+          push({ id: "github_repo", label: `GitHub repo ${owner}/${repo}`, status: "fail", proof: `HTTP ${r.status} — ${b.slice(0, 100)}` });
+        }
         const wf = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/.github/workflows/render.yml`, {
-          headers: { Authorization: `token ${pat}`, Accept: "application/vnd.github+json" },
+          headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json" },
         });
-        push({ id: "github_workflow", label: "render.yml workflow present", status: wf.ok ? "ok" : "fail", proof: `HTTP ${wf.status}` });
-      } catch (e: any) { push({ id: "github", label: "GitHub repo + PAT", status: "fail", proof: e?.message }); }
-    } else push({ id: "github", label: "GitHub repo + PAT", status: "skip", proof: "not configured" });
+        push({ id: "github_workflow", label: "render.yml present", status: wf.ok ? "ok" : "fail", proof: wf.ok ? "synced" : `HTTP ${wf.status} — push render.yml to repo` });
+      } catch (e: any) { push({ id: "github", label: "GitHub", status: "fail", proof: e?.message }); }
+    } else push({ id: "github", label: "GitHub PAT", status: "fail", proof: "no PAT configured" });
 
     // 9. Telegram (sends a test message — real proof)
     const tgTok = await get("TELEGRAM_BOT_TOKEN");

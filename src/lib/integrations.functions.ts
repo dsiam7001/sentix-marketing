@@ -6,7 +6,9 @@ import { z } from "zod";
 export const INTEGRATION_SLOTS = [
   { name: "LOVABLE_API_KEY", label: "Lovable AI Gateway", required: true, managed: true, desc: "Built-in — auto-provisioned." },
   { name: "PEXELS_API_KEY", label: "Pexels (stock video)", required: true, desc: "https://www.pexels.com/api/" },
-  { name: "PIXABAY_API_KEY", label: "Pixabay (stock video/image)", required: false, desc: "https://pixabay.com/api/docs/" },
+  { name: "PIXABAY_API_KEY", label: "Pixabay (legacy / fallback)", required: false, desc: "https://pixabay.com/api/docs/ — used if image/video specific keys not set" },
+  { name: "PIXABAY_IMAGE_API_KEY", label: "Pixabay Image API Key", required: false, desc: "Image search key — pixabay.com/api/" },
+  { name: "PIXABAY_VIDEO_API_KEY", label: "Pixabay Video API Key", required: false, desc: "Video search key — pixabay.com/api/videos/" },
   { name: "UNSPLASH_ACCESS_KEY", label: "Unsplash (extra visuals)", required: false, desc: "https://unsplash.com/developers" },
   { name: "GITHUB_PAT", label: "GitHub PAT (render trigger)", required: true, desc: "Personal access token with repo+workflow scope" },
   { name: "GITHUB_REPO_OWNER", label: "GitHub Repo Owner", required: true, desc: "your-github-username" },
@@ -86,10 +88,20 @@ async function testService(name: string, getVal: (n: string) => Promise<string |
         const r = await fetch("https://api.pexels.com/videos/search?query=trading&per_page=1", { headers: { Authorization: v } });
         return { ok: r.ok, message: r.ok ? "OK" : `HTTP ${r.status}` };
       }
-      case "PIXABAY_API_KEY": {
+      case "PIXABAY_API_KEY":
+      case "PIXABAY_VIDEO_API_KEY": {
         if (!v) return { ok: false, message: "No key" };
-        const r = await fetch(`https://pixabay.com/api/videos/?key=${v}&q=test&per_page=1`);
-        return { ok: r.ok, message: r.ok ? "OK" : `HTTP ${r.status}` };
+        const r = await fetch(`https://pixabay.com/api/videos/?key=${v}&q=trading&per_page=3&safesearch=true`);
+        if (r.ok) return { ok: true, message: "Video search OK" };
+        const txt = await r.text().catch(() => "");
+        return { ok: false, message: `HTTP ${r.status} — ${txt.slice(0, 150)}` };
+      }
+      case "PIXABAY_IMAGE_API_KEY": {
+        if (!v) return { ok: false, message: "No key" };
+        const r = await fetch(`https://pixabay.com/api/?key=${v}&q=trading&per_page=3&safesearch=true&image_type=photo`);
+        if (r.ok) return { ok: true, message: "Image search OK" };
+        const txt = await r.text().catch(() => "");
+        return { ok: false, message: `HTTP ${r.status} — ${txt.slice(0, 150)}` };
       }
       case "UNSPLASH_ACCESS_KEY": {
         if (!v) return { ok: false, message: "No key" };
