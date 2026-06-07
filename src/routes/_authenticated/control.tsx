@@ -548,3 +548,93 @@ function PipelineRunsCard() {
     </Card>
   );
 }
+
+function MastermindCard() {
+  const qc = useQueryClient();
+  const execFn = useServerFn(executeMastermind);
+  const checkFn = useServerFn(ensureGithubReady);
+  const [topic, setTopic] = useState("");
+  const [events, setEvents] = useState<any[]>([]);
+  const [lastResult, setLastResult] = useState<any>(null);
+
+  const ghCheck = useMutation({
+    mutationFn: () => checkFn(),
+    onSuccess: (r: any) => {
+      if (r.ok) toast.success(`GitHub: ${r.message} (as ${r.authenticated_as})`);
+      else toast.error(`GitHub: ${r.message}`);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const execute = useMutation({
+    mutationFn: () => execFn({ data: { topic: topic.trim() || undefined } }),
+    onSuccess: (r: any) => {
+      setEvents(r.events ?? []);
+      setLastResult(r);
+      if (r.ok) toast.success(`EXECUTE done: ${r.message ?? "dispatched"}`);
+      else toast.error(`EXECUTE failed: ${r.error}`);
+      qc.invalidateQueries({ queryKey: ["ctrl-renders"] });
+      qc.invalidateQueries({ queryKey: ["pipeline-runs"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <Card className="border-accent/40 bg-gradient-to-br from-accent/5 to-primary/5">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center justify-between gap-2 flex-wrap">
+          <span className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-accent" /> Mastermind — One-click EXECUTE
+          </span>
+          <Button size="sm" variant="outline" onClick={() => ghCheck.mutate()} disabled={ghCheck.isPending}>
+            {ghCheck.isPending ? "Checking…" : "Check GitHub"}
+          </Button>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          এক বাটনে: idea → Dual-AI (9.0 gate, 3-retry self-healing) → asset plan → GitHub render dispatch → Telegram (Actions complete হলে)।
+          Topic ঘর খালি রাখলে AI নিজে topic বেছে নিবে।
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          <Input
+            placeholder="(Optional) Custom topic — e.g. 'GBPJPY trap analysis'"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            className="flex-1 min-w-[200px]"
+          />
+          <Button
+            onClick={() => execute.mutate()}
+            disabled={execute.isPending}
+            size="lg"
+            className="bg-accent text-accent-foreground hover:bg-accent/90"
+          >
+            <Zap className="h-4 w-4" />
+            {execute.isPending ? "Executing…" : "EXECUTE"}
+          </Button>
+        </div>
+        {lastResult && (
+          <div className={`rounded-md border p-2 text-xs ${lastResult.ok ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5"}`}>
+            <div className="font-medium">{lastResult.ok ? "✓" : "✗"} {lastResult.message ?? lastResult.error}</div>
+            {lastResult.jobId && <div className="text-muted-foreground mt-1">Job: <span className="font-mono">{lastResult.jobId}</span> · Script: <span className="font-mono">{lastResult.scriptId?.slice(0, 8)}</span> · Score: {lastResult.score}</div>}
+          </div>
+        )}
+        {events.length > 0 && (
+          <div className="space-y-1 max-h-64 overflow-auto rounded-md border border-border p-2 bg-background/50">
+            {events.map((e, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs">
+                <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                  e.status === "ok" ? "bg-success" :
+                  e.status === "warn" ? "bg-warning" : "bg-destructive"
+                }`} />
+                <span className="text-muted-foreground tabular-nums">{new Date(e.ts).toLocaleTimeString()}</span>
+                <span className="font-medium">{e.stage}</span>
+                <span className="text-muted-foreground truncate flex-1">{e.message}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
