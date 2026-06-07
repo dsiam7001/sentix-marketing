@@ -30,10 +30,10 @@ async function searchPexels(query: string, perPage = 5) {
 }
 
 async function searchPixabay(query: string, perPage = 5) {
-  const key = process.env.PIXABAY_API_KEY;
+  const key = process.env.PIXABAY_VIDEO_API_KEY || process.env.PIXABAY_API_KEY || process.env.Pixabay_API_Key;
   if (!key) return [];
   const res = await fetch(
-    `https://pixabay.com/api/videos/?key=${key}&q=${encodeURIComponent(query)}&per_page=${perPage}&video_type=film`,
+    `https://pixabay.com/api/videos/?key=${key}&q=${encodeURIComponent(query)}&per_page=${perPage}&video_type=film&safesearch=true`,
   );
   if (!res.ok) return [];
   const json: any = await res.json();
