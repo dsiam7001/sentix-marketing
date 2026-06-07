@@ -7,10 +7,12 @@ import { getRecentRenders } from "@/lib/render.functions";
 import { runSystemDoctor, recentDiagnostics } from "@/lib/system-doctor.functions";
 import { recentGuardReports } from "@/lib/guardrails.functions";
 import { recentPipelineRuns } from "@/lib/autopilot.functions";
+import { executeMastermind, ensureGithubReady } from "@/lib/mastermind.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   Activity,
@@ -150,6 +152,9 @@ function ControlPage() {
         </div>
         <Badge className="bg-success/20 text-success border-success/30">$0.00 / mo</Badge>
       </div>
+
+      <MastermindCard />
+
 
       {/* Pipeline funnel */}
       <Card>
