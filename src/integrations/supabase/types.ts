@@ -141,6 +141,7 @@ export type Database = {
           id: string
           last_checked: string | null
           last_digest: Json | null
+          notes: string | null
           platform: string
           user_id: string
         }
@@ -151,6 +152,7 @@ export type Database = {
           id?: string
           last_checked?: string | null
           last_digest?: Json | null
+          notes?: string | null
           platform?: string
           user_id: string
         }
@@ -161,6 +163,7 @@ export type Database = {
           id?: string
           last_checked?: string | null
           last_digest?: Json | null
+          notes?: string | null
           platform?: string
           user_id?: string
         }
@@ -217,6 +220,42 @@ export type Database = {
           variants?: Json
           virality_breakdown?: Json | null
           virality_score?: number | null
+        }
+        Relationships: []
+      }
+      creative_references: {
+        Row: {
+          analysis: Json | null
+          analyzed_at: string | null
+          created_at: string
+          id: string
+          label: string | null
+          media_type: string
+          public_url: string | null
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          analysis?: Json | null
+          analyzed_at?: string | null
+          created_at?: string
+          id?: string
+          label?: string | null
+          media_type: string
+          public_url?: string | null
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          analysis?: Json | null
+          analyzed_at?: string | null
+          created_at?: string
+          id?: string
+          label?: string | null
+          media_type?: string
+          public_url?: string | null
+          storage_path?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -447,6 +486,7 @@ export type Database = {
       }
       hooks_library: {
         Row: {
+          ai_generated: boolean
           category: string | null
           created_at: string
           emotion: string | null
@@ -454,9 +494,11 @@ export type Database = {
           hook_text: string
           id: string
           is_seed: boolean
+          source_topic: string | null
           user_id: string | null
         }
         Insert: {
+          ai_generated?: boolean
           category?: string | null
           created_at?: string
           emotion?: string | null
@@ -464,9 +506,11 @@ export type Database = {
           hook_text: string
           id?: string
           is_seed?: boolean
+          source_topic?: string | null
           user_id?: string | null
         }
         Update: {
+          ai_generated?: boolean
           category?: string | null
           created_at?: string
           emotion?: string | null
@@ -474,12 +518,14 @@ export type Database = {
           hook_text?: string
           id?: string
           is_seed?: boolean
+          source_topic?: string | null
           user_id?: string | null
         }
         Relationships: []
       }
       pipeline_runs: {
         Row: {
+          cost_usd: number | null
           created_at: string
           data: Json | null
           id: string
@@ -488,9 +534,12 @@ export type Database = {
           slot: string | null
           stage: string
           status: string
+          tokens_in: number | null
+          tokens_out: number | null
           user_id: string
         }
         Insert: {
+          cost_usd?: number | null
           created_at?: string
           data?: Json | null
           id?: string
@@ -499,9 +548,12 @@ export type Database = {
           slot?: string | null
           stage: string
           status: string
+          tokens_in?: number | null
+          tokens_out?: number | null
           user_id: string
         }
         Update: {
+          cost_usd?: number | null
           created_at?: string
           data?: Json | null
           id?: string
@@ -510,6 +562,8 @@ export type Database = {
           slot?: string | null
           stage?: string
           status?: string
+          tokens_in?: number | null
+          tokens_out?: number | null
           user_id?: string
         }
         Relationships: []
@@ -544,10 +598,14 @@ export type Database = {
           finished_at: string | null
           github_run_id: string | null
           id: string
+          next_retry_at: string | null
           payload: Json | null
+          retry_count: number
           script_id: string
           started_at: string
           status: string
+          telegram_delivered_at: string | null
+          telegram_message_id: string | null
           user_id: string
           video_url: string | null
         }
@@ -559,10 +617,14 @@ export type Database = {
           finished_at?: string | null
           github_run_id?: string | null
           id?: string
+          next_retry_at?: string | null
           payload?: Json | null
+          retry_count?: number
           script_id: string
           started_at?: string
           status?: string
+          telegram_delivered_at?: string | null
+          telegram_message_id?: string | null
           user_id: string
           video_url?: string | null
         }
@@ -574,10 +636,14 @@ export type Database = {
           finished_at?: string | null
           github_run_id?: string | null
           id?: string
+          next_retry_at?: string | null
           payload?: Json | null
+          retry_count?: number
           script_id?: string
           started_at?: string
           status?: string
+          telegram_delivered_at?: string | null
+          telegram_message_id?: string | null
           user_id?: string
           video_url?: string | null
         }
