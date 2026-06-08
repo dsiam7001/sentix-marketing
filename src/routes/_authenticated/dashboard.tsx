@@ -47,10 +47,11 @@ function Dashboard() {
   const { data: stats } = useQuery({
     queryKey: ["dash-stats"],
     queryFn: async () => {
-      const [ideas, scripts, videos] = await Promise.all([
+      const [ideas, scripts, videos, hooks] = await Promise.all([
         supabase.from("content_ideas").select("id, status", { count: "exact", head: false }),
         supabase.from("scripts").select("id", { count: "exact", head: true }),
         supabase.from("videos_published").select("id", { count: "exact", head: true }),
+        supabase.from("hooks_library").select("id", { count: "exact", head: true }),
       ]);
       const pending = (ideas.data ?? []).filter((i: any) => i.status === "pending").length;
       return {
@@ -58,8 +59,22 @@ function Dashboard() {
         ideasPending: pending,
         scripts: scripts.count ?? 0,
         videos: videos.count ?? 0,
+        hooks: hooks.count ?? 0,
       };
     },
+  });
+
+  const { data: recentJobs } = useQuery({
+    queryKey: ["recent-render-jobs"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("render_jobs")
+        .select("id, status, video_url, telegram_message_id, telegram_delivered_at, error, started_at, finished_at, scripts(title)")
+        .order("started_at", { ascending: false })
+        .limit(5);
+      return data ?? [];
+    },
+    refetchInterval: 5000,
   });
 
   const { data: recentVideos } = useQuery({
@@ -157,8 +172,50 @@ function Dashboard() {
         <StatCard label="Ideas" value={stats?.ideasTotal ?? 0} sub={`${stats?.ideasPending ?? 0} pending`} icon={Lightbulb} />
         <StatCard label="Scripts" value={stats?.scripts ?? 0} sub="generated" icon={FileText} />
         <StatCard label="Published" value={stats?.videos ?? 0} sub="videos" icon={TrendingUp} />
-        <StatCard label="Hooks" value={50} sub="seeds + custom" icon={Sparkles} />
+        <StatCard label="Hooks" value={stats?.hooks ?? 0} sub="in library" icon={Sparkles} />
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Render Pipeline — live</CardTitle>
+          <CardDescription>সর্বশেষ ৫টা render job, Telegram delivery proof সহ।</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {recentJobs?.length === 0 && (
+            <p className="text-sm text-muted-foreground">এখনো কোনো render job নেই।</p>
+          )}
+          {recentJobs?.map((j: any) => (
+            <div key={j.id} className="rounded-md border border-border p-3 text-xs space-y-1">
+              <div className="flex justify-between flex-wrap gap-2">
+                <span className="font-medium">{j.scripts?.title ?? j.id.slice(0, 8)}</span>
+                <span className={
+                  j.status === "succeeded" ? "text-success" :
+                  j.status === "failed" ? "text-destructive" :
+                  "text-warning"
+                }>{j.status}</span>
+              </div>
+              <div className="text-muted-foreground">
+                Started: {new Date(j.started_at).toLocaleString()}
+                {j.finished_at && <> · Finished: {new Date(j.finished_at).toLocaleTimeString()}</>}
+              </div>
+              {j.video_url && (
+                <a href={j.video_url} target="_blank" rel="noreferrer" className="text-primary hover:underline break-all">
+                  📹 {j.video_url}
+                </a>
+              )}
+              {j.telegram_message_id ? (
+                <div className="text-success">
+                  ✅ Telegram delivered · message_id {j.telegram_message_id}
+                  {j.telegram_delivered_at && <> · {new Date(j.telegram_delivered_at).toLocaleTimeString()}</>}
+                </div>
+              ) : j.status === "succeeded" ? (
+                <div className="text-warning">⚠️ Telegram not delivered yet (enable auto_publish_telegram in autopilot settings)</div>
+              ) : null}
+              {j.error && <div className="text-destructive">⚠️ {j.error}</div>}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

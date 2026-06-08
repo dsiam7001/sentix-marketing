@@ -13,6 +13,7 @@ import {
   LogOut,
   Sparkles,
   Activity,
+  Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,7 @@ const nav = [
   { to: "/ideas", label: "Idea Lab", icon: Lightbulb },
   { to: "/scripts", label: "Script Studio", icon: FileText },
   { to: "/hooks", label: "Hook Library", icon: Hash },
+  { to: "/references", label: "References", icon: ImageIcon },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
   { to: "/performance", label: "Performance", icon: TrendingUp },
   { to: "/inspiration", label: "Inspiration", icon: Eye },

@@ -56,7 +56,7 @@ export const Route = createFileRoute("/api/public/render-callback")({
             }
           } catch { /* ignore — optional */ }
 
-          // Telegram delivery if user has it enabled in autopilot settings + has secrets
+          // Telegram delivery — send actual VIDEO with caption (real proof)
           try {
             const { data: settings } = await supabaseAdmin
               .from("autopilot_settings").select("auto_publish_telegram").eq("user_id", existing.user_id).maybeSingle();
@@ -68,17 +68,45 @@ export const Route = createFileRoute("/api/public/render-callback")({
               const token = tok?.value ?? process.env.TELEGRAM_BOT_TOKEN;
               const chatId = chat?.value ?? process.env.TELEGRAM_CHAT_ID;
               if (token && chatId) {
-                const { data: script } = await supabaseAdmin.from("scripts").select("title").eq("id", script_id).maybeSingle();
-                await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                const { data: script } = await supabaseAdmin.from("scripts").select("title, caption, hashtags").eq("id", script_id).maybeSingle();
+                const caption = `🎬 ${script?.title ?? "New video"}\n\n${script?.caption ?? ""}\n\n${script?.hashtags ?? ""}`.slice(0, 1024);
+                // sendVideo with URL (Telegram fetches it)
+                const tgRes = await fetch(`https://api.telegram.org/bot${token}/sendVideo`, {
                   method: "POST", headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    chat_id: chatId,
-                    text: `🎬 ${script?.title ?? "New video"}\n${video_url}`,
-                  }),
+                  body: JSON.stringify({ chat_id: chatId, video: video_url, caption, supports_streaming: true }),
                 });
+                const tgJson: any = await tgRes.json().catch(() => ({}));
+                if (tgJson?.ok && tgJson.result?.message_id) {
+                  await supabaseAdmin.from("render_jobs").update({
+                    telegram_message_id: String(tgJson.result.message_id),
+                    telegram_delivered_at: new Date().toISOString(),
+                  }).eq("id", job_id);
+                } else {
+                  // Fallback: send message with link if video fails
+                  const fb = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ chat_id: chatId, text: `${caption}\n\n${video_url}` }),
+                  });
+                  const fbJson: any = await fb.json().catch(() => ({}));
+                  if (fbJson?.ok && fbJson.result?.message_id) {
+                    await supabaseAdmin.from("render_jobs").update({
+                      telegram_message_id: String(fbJson.result.message_id),
+                      telegram_delivered_at: new Date().toISOString(),
+                      error: `sendVideo failed: ${tgJson?.description ?? "unknown"} — fallback to sendMessage OK`,
+                    }).eq("id", job_id);
+                  } else {
+                    await supabaseAdmin.from("render_jobs").update({
+                      error: `Telegram delivery failed: ${tgJson?.description ?? fbJson?.description ?? "unknown"}`,
+                    }).eq("id", job_id);
+                  }
+                }
               }
             }
-          } catch { /* ignore */ }
+          } catch (e: any) {
+            await supabaseAdmin.from("render_jobs").update({
+              error: `Telegram exception: ${e?.message ?? "unknown"}`,
+            }).eq("id", job_id);
+          }
         } else if (status === "failed") {
           await supabaseAdmin.from("scripts").update({ render_status: "failed" }).eq("id", script_id);
         } else {
