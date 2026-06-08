@@ -99,7 +99,7 @@ export const triggerRender = createServerFn({ method: "POST" })
         method: "POST",
         headers: {
           Authorization: `Bearer ${pat}`,
-          Accept: "application/vnd.github+json",
+          Accept: "application/vnd.github+json", "User-Agent": "sentix-marketing-bot",
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dispatchBody),

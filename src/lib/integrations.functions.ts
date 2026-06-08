@@ -110,7 +110,7 @@ async function testService(name: string, getVal: (n: string) => Promise<string |
       }
       case "GITHUB_PAT": {
         if (!v) return { ok: false, message: "No token" };
-        const r = await fetch("https://api.github.com/user", { headers: { Authorization: `token ${v}`, Accept: "application/vnd.github+json" } });
+        const r = await fetch("https://api.github.com/user", { headers: { Authorization: `token ${v}`, Accept: "application/vnd.github+json", "User-Agent": "sentix-marketing-bot" } });
         if (!r.ok) return { ok: false, message: `HTTP ${r.status}` };
         const j: any = await r.json();
         return { ok: true, message: `Authenticated as ${j.login}` };
@@ -121,7 +121,7 @@ async function testService(name: string, getVal: (n: string) => Promise<string |
         const repo = await getVal("GITHUB_REPO_NAME");
         const pat = await getVal("GITHUB_PAT");
         if (!owner || !repo) return { ok: false, message: "Missing owner/repo" };
-        const headers: any = pat ? { Authorization: `token ${pat}`, Accept: "application/vnd.github+json" } : { Accept: "application/vnd.github+json", "User-Agent": "sentix-marketing-bot" };
+        const headers: any = pat ? { Authorization: `token ${pat}`, Accept: "application/vnd.github+json", "User-Agent": "sentix-marketing-bot" } : { Accept: "application/vnd.github+json", "User-Agent": "sentix-marketing-bot" };
         const r = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
         return { ok: r.ok, message: r.ok ? "Repo reachable" : `HTTP ${r.status}` };
       }

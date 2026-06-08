@@ -71,7 +71,7 @@ export const cancelRender = createServerFn({ method: "POST" })
       try {
         await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/runs/${job.github_run_id}/cancel`, {
           method: "POST",
-          headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json" },
+          headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json", "User-Agent": "sentix-marketing-bot" },
         });
       } catch { /* ignore */ }
     }

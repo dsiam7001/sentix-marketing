@@ -184,7 +184,7 @@ export async function triggerRenderInternal(supabase: any, userId: string, scrip
 
   const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/dispatches`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json", "User-Agent": "sentix-marketing-bot", "Content-Type": "application/json" },
     body: JSON.stringify({
       event_type: "sentix-render",
       client_payload: {

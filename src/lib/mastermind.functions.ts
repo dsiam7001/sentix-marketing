@@ -33,7 +33,7 @@ export const ensureGithubReady = createServerFn({ method: "POST" })
 
     // 1. validate token + scopes
     const u = await fetch("https://api.github.com/user", {
-      headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json" },
+      headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json", "User-Agent": "sentix-marketing-bot" },
     });
     if (!u.ok) {
       const t = await u.text();
@@ -44,7 +44,7 @@ export const ensureGithubReady = createServerFn({ method: "POST" })
 
     // 2. repo reachable (private OK because PAT is sent)
     const r = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
-      headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json" },
+      headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json", "User-Agent": "sentix-marketing-bot" },
     });
     if (!r.ok) {
       const t = await r.text();
@@ -55,7 +55,7 @@ export const ensureGithubReady = createServerFn({ method: "POST" })
     // 3. workflow file present?
     const wf = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/contents/${RENDER_WORKFLOW_PATH}`,
-      { headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json" } },
+      { headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json", "User-Agent": "sentix-marketing-bot" } },
     );
 
     return {
@@ -104,7 +104,7 @@ export const executeMastermind = createServerFn({ method: "POST" })
         return { ok: false, events, error: "GITHUB_PAT missing — Settings → GitHub PAT" };
       }
       const repoR = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
-        headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json" },
+        headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json", "User-Agent": "sentix-marketing-bot" },
       });
       if (!repoR.ok) {
         const t = await repoR.text();

@@ -95,7 +95,7 @@ export const runSystemDoctor = createServerFn({ method: "POST" })
     if (pat) {
       try {
         const u = await fetch("https://api.github.com/user", {
-          headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json" },
+          headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json", "User-Agent": "sentix-marketing-bot" },
         });
         if (!u.ok) {
           const b = await u.text();
@@ -105,7 +105,7 @@ export const runSystemDoctor = createServerFn({ method: "POST" })
           push({ id: "github_pat", label: "GitHub PAT", status: "ok", proof: `as ${ju.login}` });
         }
         const r = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
-          headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json" },
+          headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json", "User-Agent": "sentix-marketing-bot" },
         });
         if (r.ok) {
           const jr: any = await r.json();
@@ -115,7 +115,7 @@ export const runSystemDoctor = createServerFn({ method: "POST" })
           push({ id: "github_repo", label: `GitHub repo ${owner}/${repo}`, status: "fail", proof: `HTTP ${r.status} — ${b.slice(0, 100)}` });
         }
         const wf = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/.github/workflows/render.yml`, {
-          headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json" },
+          headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json", "User-Agent": "sentix-marketing-bot" },
         });
         push({ id: "github_workflow", label: "render.yml present", status: wf.ok ? "ok" : "fail", proof: wf.ok ? "synced" : `HTTP ${wf.status} — push render.yml to repo` });
       } catch (e: any) { push({ id: "github", label: "GitHub", status: "fail", proof: e?.message }); }
