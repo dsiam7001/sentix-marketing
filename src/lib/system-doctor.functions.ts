@@ -149,6 +149,51 @@ export const runSystemDoctor = createServerFn({ method: "POST" })
     const secret = await get("RENDER_CALLBACK_SECRET");
     push({ id: "callback", label: "Render callback secret", status: secret ? "ok" : "fail", proof: secret ? "stored" : "missing" });
 
+    // 12. Storage bucket reachability
+    try {
+      const { data: buckets } = await ctx.supabase.storage.listBuckets();
+      const refsBucket = buckets?.find((b: any) => b.name === "creative-references");
+      push({ id: "storage", label: "Storage bucket (creative-references)", status: refsBucket ? "ok" : "warn", proof: refsBucket ? "available" : "missing" });
+    } catch (e: any) { push({ id: "storage", label: "Storage", status: "fail", proof: e?.message }); }
+
+    // 13. Last Telegram delivery proof
+    try {
+      const { data: lastDelivery } = await ctx.supabase
+        .from("render_jobs")
+        .select("telegram_message_id, telegram_delivered_at")
+        .eq("user_id", ctx.userId)
+        .not("telegram_message_id", "is", null)
+        .order("telegram_delivered_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      push({
+        id: "telegram_proof",
+        label: "Last Telegram video delivery",
+        status: lastDelivery ? "ok" : "skip",
+        proof: lastDelivery
+          ? `message_id ${lastDelivery.telegram_message_id} @ ${new Date(lastDelivery.telegram_delivered_at).toLocaleString()}`
+          : "no deliveries yet",
+      });
+    } catch (e: any) { push({ id: "telegram_proof", label: "Telegram delivery history", status: "warn", proof: e?.message }); }
+
+    // 14. Cost summary (last 24h)
+    try {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: costs } = await ctx.supabase
+        .from("pipeline_runs")
+        .select("cost_usd, tokens_in, tokens_out")
+        .eq("user_id", ctx.userId)
+        .gte("created_at", since);
+      const totalCost = (costs ?? []).reduce((s: number, r: any) => s + Number(r.cost_usd ?? 0), 0);
+      const totalTokens = (costs ?? []).reduce((s: number, r: any) => s + (r.tokens_in ?? 0) + (r.tokens_out ?? 0), 0);
+      push({
+        id: "cost",
+        label: "AI spend (last 24h)",
+        status: "ok",
+        proof: `$${totalCost.toFixed(4)} · ${totalTokens} tokens · ${costs?.length ?? 0} calls`,
+      });
+    } catch (e: any) { push({ id: "cost", label: "Cost ledger", status: "warn", proof: e?.message }); }
+
     const okCount = steps.filter((s) => s.status === "ok").length;
     const failCount = steps.filter((s) => s.status === "fail").length;
     const summary = { ok: okCount, fail: failCount, warn: steps.filter((s) => s.status === "warn").length, skip: steps.filter((s) => s.status === "skip").length, total: steps.length };
