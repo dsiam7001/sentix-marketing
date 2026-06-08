@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedScriptsRouteImport } from './routes/_authenticated/scripts'
+import { Route as AuthenticatedReferencesRouteImport } from './routes/_authenticated/references'
 import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
 import { Route as AuthenticatedInspirationRouteImport } from './routes/_authenticated/inspiration'
 import { Route as AuthenticatedIdeasRouteImport } from './routes/_authenticated/ideas'
@@ -47,6 +48,11 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
 const AuthenticatedScriptsRoute = AuthenticatedScriptsRouteImport.update({
   id: '/scripts',
   path: '/scripts',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedReferencesRoute = AuthenticatedReferencesRouteImport.update({
+  id: '/references',
+  path: '/references',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPerformanceRoute =
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/ideas': typeof AuthenticatedIdeasRoute
   '/inspiration': typeof AuthenticatedInspirationRoute
   '/performance': typeof AuthenticatedPerformanceRoute
+  '/references': typeof AuthenticatedReferencesRoute
   '/scripts': typeof AuthenticatedScriptsRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/scripts/$id': typeof AuthenticatedScriptsIdRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/ideas': typeof AuthenticatedIdeasRoute
   '/inspiration': typeof AuthenticatedInspirationRoute
   '/performance': typeof AuthenticatedPerformanceRoute
+  '/references': typeof AuthenticatedReferencesRoute
   '/scripts': typeof AuthenticatedScriptsRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/scripts/$id': typeof AuthenticatedScriptsIdRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/_authenticated/ideas': typeof AuthenticatedIdeasRoute
   '/_authenticated/inspiration': typeof AuthenticatedInspirationRoute
   '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
+  '/_authenticated/references': typeof AuthenticatedReferencesRoute
   '/_authenticated/scripts': typeof AuthenticatedScriptsRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/scripts/$id': typeof AuthenticatedScriptsIdRoute
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/ideas'
     | '/inspiration'
     | '/performance'
+    | '/references'
     | '/scripts'
     | '/settings'
     | '/scripts/$id'
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/ideas'
     | '/inspiration'
     | '/performance'
+    | '/references'
     | '/scripts'
     | '/settings'
     | '/scripts/$id'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ideas'
     | '/_authenticated/inspiration'
     | '/_authenticated/performance'
+    | '/_authenticated/references'
     | '/_authenticated/scripts'
     | '/_authenticated/settings'
     | '/_authenticated/scripts/$id'
@@ -247,6 +259,13 @@ declare module '@tanstack/react-router' {
       path: '/scripts'
       fullPath: '/scripts'
       preLoaderRoute: typeof AuthenticatedScriptsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/references': {
+      id: '/_authenticated/references'
+      path: '/references'
+      fullPath: '/references'
+      preLoaderRoute: typeof AuthenticatedReferencesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/performance': {
@@ -341,6 +360,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedIdeasRoute: typeof AuthenticatedIdeasRoute
   AuthenticatedInspirationRoute: typeof AuthenticatedInspirationRoute
   AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
+  AuthenticatedReferencesRoute: typeof AuthenticatedReferencesRoute
   AuthenticatedScriptsRoute: typeof AuthenticatedScriptsRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
 }
@@ -353,6 +373,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedIdeasRoute: AuthenticatedIdeasRoute,
   AuthenticatedInspirationRoute: AuthenticatedInspirationRoute,
   AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,
+  AuthenticatedReferencesRoute: AuthenticatedReferencesRoute,
   AuthenticatedScriptsRoute: AuthenticatedScriptsRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
 }
@@ -370,3 +391,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
