@@ -89,7 +89,7 @@ function InspirationPage() {
             key={c.id}
             c={c}
             onReview={() => markReviewed.mutate(c.id)}
-            onSaveNotes={(notes) => saveNotes.mutate({ id: c.id, notes })}
+            onSaveNotes={(notes: string) => saveNotes.mutate({ id: c.id, notes })}
             onDelete={() => del.mutate(c.id)}
           />
         ))}
