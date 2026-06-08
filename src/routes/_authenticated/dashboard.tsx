@@ -47,10 +47,11 @@ function Dashboard() {
   const { data: stats } = useQuery({
     queryKey: ["dash-stats"],
     queryFn: async () => {
-      const [ideas, scripts, videos] = await Promise.all([
+      const [ideas, scripts, videos, hooks] = await Promise.all([
         supabase.from("content_ideas").select("id, status", { count: "exact", head: false }),
         supabase.from("scripts").select("id", { count: "exact", head: true }),
         supabase.from("videos_published").select("id", { count: "exact", head: true }),
+        supabase.from("hooks_library").select("id", { count: "exact", head: true }),
       ]);
       const pending = (ideas.data ?? []).filter((i: any) => i.status === "pending").length;
       return {
@@ -58,8 +59,22 @@ function Dashboard() {
         ideasPending: pending,
         scripts: scripts.count ?? 0,
         videos: videos.count ?? 0,
+        hooks: hooks.count ?? 0,
       };
     },
+  });
+
+  const { data: recentJobs } = useQuery({
+    queryKey: ["recent-render-jobs"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("render_jobs")
+        .select("id, status, video_url, telegram_message_id, telegram_delivered_at, error, started_at, finished_at, scripts(title)")
+        .order("started_at", { ascending: false })
+        .limit(5);
+      return data ?? [];
+    },
+    refetchInterval: 5000,
   });
 
   const { data: recentVideos } = useQuery({
