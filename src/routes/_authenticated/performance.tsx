@@ -4,8 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/performance")({
   component: PerformancePage,
@@ -62,10 +64,22 @@ function PerformancePage() {
 
   const updateViews = useMutation({
     mutationFn: async ({ id, field, value }: { id: string; field: string; value: number }) => {
-      const patch: Record<string, number> = { [field]: value };
+      const patch: Record<string, number | string> = { [field]: value, updated_at: new Date().toISOString() };
       await supabase.from("videos_published").update(patch as any).eq("id", id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["videos"] }),
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("videos_published").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Deleted");
+      qc.invalidateQueries({ queryKey: ["videos"] });
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   return (
@@ -73,7 +87,7 @@ function PerformancePage() {
       <div>
         <h1 className="text-3xl font-bold text-gradient">Performance Tracker</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Real data input → AI calibration। ৫ সেকেন্ডে views log করুন।
+          সব data manually-logged real data — কোনো fake metric নেই। AI calibration-এর জন্য views input দিন।
         </p>
       </div>
 
@@ -112,11 +126,23 @@ function PerformancePage() {
               <div className="flex justify-between items-start gap-3 flex-wrap mb-3">
                 <div>
                   <div className="font-medium">{v.scripts?.title || "Untitled"}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {v.platform} · {new Date(v.published_at).toLocaleDateString()}
-                    {v.scripts?.virality_score && <> · AI predicted: {v.scripts.virality_score}</>}
+                  <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                    <span>{v.platform}</span>
+                    <span>·</span>
+                    <span>{new Date(v.published_at).toLocaleDateString()}</span>
+                    <Badge variant="outline" className="text-[10px]">Manually logged</Badge>
+                    {v.scripts?.virality_score && <span>· AI predicted: {v.scripts.virality_score}</span>}
                   </div>
                 </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => {
+                    if (confirm("Delete this video log?")) del.mutate(v.id);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <ViewsInput label="24h" value={v.views_24h} onSave={(val: number) => updateViews.mutate({ id: v.id, field: "views_24h", value: val })} />
@@ -135,7 +161,7 @@ function ViewsInput({ label, value, onSave }: any) {
   const [v, setV] = useState(value ?? "");
   return (
     <div>
-      <label className="text-xs text-muted-foreground">{label} views</label>
+      <label className="text-xs text-muted-foreground">{label} views (manual)</label>
       <Input
         type="number"
         value={v}
