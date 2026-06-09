@@ -33,12 +33,15 @@ jobs:
       - name: Install edge-tts
         run: pip install --quiet edge-tts
 
-      - name: Write data.json from dispatch payload
+      - name: Write payload.json + data.json from dispatch payload
         env:
           PAYLOAD: ${{ toJson(github.event.client_payload) }}
         run: |
-          echo "$PAYLOAD" > data.json
-          jq '.title, .scenes | length' data.json
+          echo "$PAYLOAD" > payload.json
+          # data.json contains the inner `data` field (content for Remotion + workflow steps)
+          jq '.data' payload.json > data.json
+          echo "Title:" && jq -r '.title' data.json
+          echo "Scenes:" && jq '.scenes | length' data.json
 
       - name: Generate Bengali voiceover (Edge-TTS)
         run: |
@@ -67,11 +70,10 @@ jobs:
         run: |
           mkdir -p out
           mv remotion/../out/output.mp4 out/raw.mp4 || mv out/output.mp4 out/raw.mp4 || true
-          # Locate produced file
           IN=$(find . -maxdepth 4 -name 'output.mp4' | head -1)
           if [ -z "$IN" ]; then IN=out/raw.mp4; fi
           ffmpeg -y -i "$IN" \
-            -vf "noise=alls=2:allf=t,hflip=0" \
+            -vf "noise=alls=2:allf=t" \
             -metadata make="Apple" \
             -metadata model="iPhone 15 Pro" \
             -metadata software="iOS 18.2.1" \
@@ -89,16 +91,21 @@ jobs:
           retention-days: 14
 
       - name: Send to Telegram
-        if: env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
         env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ github.event.client_payload.telegram.bot_token || secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ github.event.client_payload.telegram.chat_id || secrets.TELEGRAM_CHAT_ID }}
           TITLE: ${{ github.event.client_payload.title }}
         run: |
-          curl -sS -F "chat_id=$TELEGRAM_CHAT_ID" \
-            -F "caption=🎬 ${TITLE} (Sentix AI)" \
-            -F "video=@out/final.mp4" \
-            "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendVideo" || true
+          if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            curl -sS -F "chat_id=$TELEGRAM_CHAT_ID" \
+              -F "caption=🎬 ${TITLE} (Sentix AI)" \
+              -F "video=@out/final.mp4" \
+              "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendVideo" > telegram_response.json || true
+            cat telegram_response.json || true
+            jq -r '.result.message_id // empty' telegram_response.json > telegram_message_id.txt || true
+          else
+            : > telegram_message_id.txt
+          fi
 
       - name: Notify Lovable callback (success)
         if: success()
@@ -109,13 +116,16 @@ jobs:
           SIG: ${{ github.event.client_payload.signature }}
           ARTIFACT_URL: "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         run: |
+          TG_MSG=""
+          if [ -f telegram_message_id.txt ]; then TG_MSG=$(cat telegram_message_id.txt); fi
           curl -sS -X POST "$CB" -H "Content-Type: application/json" -d "{
             \"job_id\": \"$JOB\",
             \"script_id\": \"$SCRIPT\",
             \"signature\": \"$SIG\",
             \"status\": \"succeeded\",
             \"video_url\": \"$ARTIFACT_URL\",
-            \"github_run_id\": \"${{ github.run_id }}\"
+            \"github_run_id\": \"${{ github.run_id }}\",
+            \"telegram_message_id\": \"$TG_MSG\"
           }" || true
 
       - name: Notify Lovable callback (failure)
