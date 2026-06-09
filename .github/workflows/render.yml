@@ -113,9 +113,9 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TITLE: ${{ github.event.client_payload.title }}
-          CAPTION: ${{ github.event.client_payload.caption }}
-          HASHTAGS: ${{ github.event.client_payload.hashtags }}
         run: |
+          CAPTION=$(jq -r '.caption // ""' data.json)
+          HASHTAGS=$(jq -r '.hashtags // ""' data.json)
           if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
             FULL_CAP="🎬 ${TITLE}"
             if [ -n "$CAPTION" ]; then FULL_CAP="${FULL_CAP}
