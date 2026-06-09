@@ -1,38 +1,25 @@
 import { Composition, getInputProps } from "remotion";
 import { MainVideo } from "./MainVideo";
 
-// Default data lets you preview without input props. In CI we pass props via
-// --props=public/data.json
 const DEFAULT_DATA = {
   title: "Sentix AI Demo",
-  full_script: "এই ১৫ সেকেন্ডে আপনি বুঝবেন trading logic কী।",
-  music_mood: "dark cyberpunk",
+  full_script: "Demo",
+  music_mood: "cinematic",
   scenes: [
-    {
-      start_sec: 0,
-      end_sec: 3,
-      narration: "VIP signal বেচা মানে scam।",
-      on_screen_text: "VIP = SCAM",
-      effects: "zoom",
-      broll_keywords: "trading chart",
-    },
-    {
-      start_sec: 3,
-      end_sec: 8,
-      narration: "Logic শেখো, প্রফিট নিজে কর।",
-      on_screen_text: "LOGIC > SIGNAL",
-      effects: "glitch",
-      broll_keywords: "candlestick",
-    },
+    { start_sec: 0, end_sec: 3, narration: "Demo", on_screen_text: "VIP = SCAM", effects: "", broll_keywords: "trading" },
+    { start_sec: 3, end_sec: 8, narration: "Demo", on_screen_text: "LOGIC > SIGNAL", effects: "", broll_keywords: "candlestick" },
   ],
   asset_plan: [],
-  srt: "",
+  captions: [],
+  end_card: { tagline: "Logic over Signal", brand: "SENTIX AI" },
 };
 
 const FPS = 30;
-function durationFromScenes(scenes: any[]) {
+const END_CARD_SEC = 2.5;
+function totalDuration(scenes: any[]) {
   const last = scenes[scenes.length - 1];
-  return Math.max(60, Math.round((last?.end_sec ?? 30) * FPS));
+  const sceneEnd = Math.max(60, Math.round((last?.end_sec ?? 30) * FPS));
+  return sceneEnd + Math.round(END_CARD_SEC * FPS);
 }
 
 export const RemotionRoot = () => {
@@ -42,7 +29,7 @@ export const RemotionRoot = () => {
     <Composition
       id="main"
       component={MainVideo as any}
-      durationInFrames={durationFromScenes(data.scenes ?? [])}
+      durationInFrames={totalDuration(data.scenes ?? [])}
       fps={FPS}
       width={1080}
       height={1920}
