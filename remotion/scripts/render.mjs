@@ -32,6 +32,8 @@ await renderMedia({
   outputLocation,
   inputProps,
   concurrency: 1,
+  timeoutInMilliseconds: 180000,
+  chromiumOptions: { gl: "swiftshader" },
 });
 
 console.log("Rendered:", outputLocation);
