@@ -94,23 +94,27 @@ function SceneRender({ scene, asset }: { scene: Scene; asset?: AssetPick }) {
   const opacity = interpolate(frame, [0, 8], [0, 1], { extrapolateRight: "clamp" });
 
   const isVideo = asset?.chosen?.url?.match(/\.(mp4|webm|mov)(\?|$)/i);
+  const rawUrl = asset?.chosen?.url;
+  const assetSrc = rawUrl
+    ? (rawUrl.startsWith("http") ? rawUrl : staticFile(rawUrl))
+    : undefined;
 
   return (
     <AbsoluteFill>
       {/* Background asset */}
-      {asset?.chosen?.url && isVideo && (
+      {assetSrc && isVideo && (
         <AbsoluteFill style={{ transform: `scale(${scale})`, opacity: 0.85 }}>
           <Video
-            src={asset.chosen.url}
+            src={assetSrc}
             muted
             style={{ width: "100%", height: "100%", objectFit: "cover", filter: "saturate(1.1) contrast(1.1)" }}
           />
         </AbsoluteFill>
       )}
-      {asset?.chosen?.url && !isVideo && (
+      {assetSrc && !isVideo && (
         <AbsoluteFill style={{ transform: `scale(${scale})`, opacity: 0.9 }}>
           <Img
-            src={asset.chosen.url}
+            src={assetSrc}
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
         </AbsoluteFill>
